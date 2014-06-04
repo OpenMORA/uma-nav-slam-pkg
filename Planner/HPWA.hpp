@@ -2,7 +2,7 @@
 #include <string>
 #include <deque>
 #include <time.h>
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 
 
 typedef std::vector<std::string> lista;
@@ -76,9 +76,9 @@ class HPWA
 
 public:
 
-	CMapirMOOSApp::CDelayedMOOSCommClient &m_Comms;
+	COpenMORAApp::CDelayedMOOSCommClient &m_Comms;
 
-	HPWA(CMapirMOOSApp::CDelayedMOOSCommClient &m_Comms);
+	HPWA(COpenMORAApp::CDelayedMOOSCommClient &m_Comms);
 
 	void HPWAInit(std::string actions_name,std::vector<std::string> comp_list);
 

@@ -4,7 +4,7 @@
 #include <set>
 #include <string>
 
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 
 using namespace mrpt;
 typedef std::pair<size_t,std::string> pet_pair;
@@ -64,9 +64,9 @@ public:
 
 	}PlanInfo;
 
-	CMapirMOOSApp::CDelayedMOOSCommClient &m_Comms;
+	COpenMORAApp::CDelayedMOOSCommClient &m_Comms;
 	
-	TaskExecutor (CMapirMOOSApp::CDelayedMOOSCommClient &m_Comms);
+	TaskExecutor (COpenMORAApp::CDelayedMOOSCommClient &m_Comms);
 //	TaskExecutor (CMOOSCommClient &m_Comms);
 
 	void LoadJokes(std::vector<std::string> jokes);

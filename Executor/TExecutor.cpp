@@ -225,7 +225,7 @@ void TaskExecutor::FileCommands(std::string path)
 	}
 }
 
-TaskExecutor::TaskExecutor(CMapirMOOSApp::CDelayedMOOSCommClient &Comms):m_Comms(Comms)
+TaskExecutor::TaskExecutor(COpenMORAApp::CDelayedMOOSCommClient &Comms):m_Comms(Comms)
 {
 
 	errorlist="";

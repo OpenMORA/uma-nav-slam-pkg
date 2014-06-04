@@ -29,12 +29,12 @@
 #ifndef CPlannerApp_H
 #define CPlannerApp_H
 
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include <mrpt/system/threads.h>
 #include "HPWA.hpp"
 
 
-class CPlannerApp : public CMapirMOOSApp
+class CPlannerApp : public COpenMORAApp
 {
 public:
     CPlannerApp();

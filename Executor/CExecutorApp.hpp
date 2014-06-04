@@ -29,11 +29,11 @@
 #ifndef CExecutorApp_H
 #define CExecutorApp_H
 
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include "TExecutor.hpp"
 
 
-class CExecutorApp : public CMapirMOOSApp
+class CExecutorApp : public COpenMORAApp
 {
 public:
     CExecutorApp();

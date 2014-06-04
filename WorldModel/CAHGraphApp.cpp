@@ -334,9 +334,11 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			}
 			else			
 			{
-				cout << "[WorldModel: GET_NODE_POSITION]EROR: Node label not found." << endl;
+				cout << "[WorldModel: GET_NODE_POSITION]EROR: Node label not found." << endl;				
+				//m_Comms.Notify("NODE_POSITION", format("%s %f %f notfound",lista[0].c_str(),x,y));
+				//!  @moos_publish NODE_POSITION  geometric position of a node in response to the "GET_NODE_POSITION" var.
+				m_Comms.Notify( "NODE_POSITION", format("%s NOTFOUND",lista[0].c_str()) );
 				//! @moos_publish ERROR_MSG A string containing the description of an Error.
-				m_Comms.Notify("NODE_POSITION", format("%s %f %f notfound",lista[0].c_str(),x,y));
 				m_Comms.Notify("ERROR_MSG","pWorldModel: Node label not found. Node position not published.");
 			}
 		}

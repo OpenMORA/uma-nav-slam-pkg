@@ -29,12 +29,12 @@
 #ifndef CAHGraphApp_H
 #define CAHGraphApp_H
 
-#include <CMapirMOOSApp.h>
-#include <mrpt/base.h>
+#include <COpenMORAMOOSApp.h>
+
 #include "ahgraph.h"
 // Any other includes..
 
-class CAHGraphApp : public CMapirMOOSApp
+class CAHGraphApp : public COpenMORAApp
 {
 public:
     CAHGraphApp();

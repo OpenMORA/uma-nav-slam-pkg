@@ -2,7 +2,7 @@
 #define __CAHGRAPH_H
 
 #include <mrpt/hmtslam/CHierarchicalMHMap.h>
-#include <mrpt/base.h>
+
 
 using namespace mrpt::utils;
 using namespace mrpt::hmtslam;

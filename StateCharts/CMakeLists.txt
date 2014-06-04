@@ -1,8 +1,14 @@
 # File: CMakeListst.txt for module pStateChart
-PROJECT(StateChart)
+PROJECT(StateCharts)
 
 # Use MRPT:
 FIND_PACKAGE( MRPT REQUIRED slam gui  ) # hmtslam hwdrivers ... any other sub-library
+
+
+INCLUDE (CheckFunctionExists)
+INCLUDE (CheckIncludeFile)
+INCLUDE (CheckTypeSize)
+
 
 # Defines used by embedded "expat" library
 CHECK_FUNCTION_EXISTS(memmove HAVE_MEMMOVE)

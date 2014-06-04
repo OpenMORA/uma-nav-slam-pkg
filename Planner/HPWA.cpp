@@ -349,7 +349,7 @@ void HPWA::GetPredSucessors(refpred pred,refpred &res, long type,long level)
 */
 
 }
-HPWA::HPWA(CMapirMOOSApp::CDelayedMOOSCommClient &Comms):m_Comms(Comms)
+HPWA::HPWA(COpenMORAApp::CDelayedMOOSCommClient &Comms):m_Comms(Comms)
 {
 
 
