@@ -69,8 +69,9 @@ bool CAHGraphApp::OnStartUp()
 	RefreshGraph();
 
 	//! @moos_publish GUI_VISIBLE_TOPOLOGICAL_MAP  A boolean value to indicate the availability of the Topological Map in variable GRAPH.
-	 m_Comms.Notify("GUI_VISIBLE_TOPOLOGICAL_MAP","1");
+	m_Comms.Notify("GUI_VISIBLE_TOPOLOGICAL_MAP","1");
 
+	verbose = false;
 	return DoRegistrations();
 }
 
@@ -85,39 +86,125 @@ bool CAHGraphApp::OnCommandMsg( CMOOSMsg Msg )
 	return true;
 }
 
-bool CAHGraphApp::Iterate()
+
+/** UpdateTopologicalPlace
+  * Set the ID of the closest node to the current robot position.
+  * It updates the arcs between the graph and the "robot" node
+  * which indicates the node closest to the robot
+  */
+void CAHGraphApp::UpdateTopologicalPlace()
 {
-	
-	/** Set the ID of the closest node to the current robot position. 
-		It updates the arcs between the graph and the "robot" node
-		which indicates the node closest to the robot*/
-	CMOOSVariable *ROBOT_TOPOLOGICAL_PLACE = GetMOOSVar("ROBOT_TOPOLOGICAL_PLACE");		// Set the ID of the closest node to the current robot position
+	std::string closest_node = "empty";
+	mrpt::poses::CPose2D robotPose2D;
+	mrpt::math::CVectorDouble Robot_coord;
 
-	if (ROBOT_TOPOLOGICAL_PLACE && ROBOT_TOPOLOGICAL_PLACE->IsFresh())
+	//Get current Robot pose. LOCALIZATION x y phi
+	CMOOSVariable * pVarLoc = GetMOOSVar( "LOCALIZATION" );
+	if(pVarLoc && pVarLoc->IsFresh())
 	{
-		ROBOT_TOPOLOGICAL_PLACE->SetFresh(false);
+		pVarLoc->SetFresh(false);
+		robotPose2D.fromString( pVarLoc->GetStringVal() );
+		robotPose2D.getAsVector(Robot_coord);
 
-		size_t id = 0;
-		size_t idrobot = graph.GetNodeId("Robot");
+		if (verbose)		
+			printf("\n Robot Pose is: [%.2f,%.2f]",Robot_coord[0],Robot_coord[1]);
+	}
+	else
+	{
+		MOOSTrace(mrpt::format("[%s]: Warning: 'LOCALIZATION' not available -> ROBOT_TOPOLOGICAL_PLACE not updated.\n", GetAppName().c_str()  ));
+		return;
+	}
+		
 
-		if( graph.ExistsNodeLabel(ROBOT_TOPOLOGICAL_PLACE->GetStringVal()) )
+	//Get closest node to current Robot location
+	std::string sNodes;
+	graph.GetAllNodes(sNodes);
+	std::string delimiter = "#";
+
+	if (verbose)
+		cout << "\n Estimating current node from list: " << sNodes << endl;
+
+	size_t pos = 0;
+	std::string snode_i;
+	float min_distance = 0.0;
+	bool first_node = true;
+	while ((pos = sNodes.find(delimiter)) != std::string::npos)
+	{
+		snode_i = sNodes.substr(0, pos);				//get node [name x y]
+			
+		size_t pos2 = 0;
+		//node name
+		pos2 = snode_i.find(" ");
+		std::string nodeName = snode_i.substr(0, pos2);
+		snode_i.erase(0, pos2 + 1);			
+		//node x
+		pos2 = snode_i.find(" ");
+		std::string nodeX = snode_i.substr(0, pos2);
+		snode_i.erase(0, pos2 + 1);			
+		//node y
+		std::string	nodeY = snode_i;
+			
+		if (nodeName.compare("Robot") != 0 )
 		{
-			size_t idtarget = graph.GetNodeId(ROBOT_TOPOLOGICAL_PLACE->GetStringVal());
+			//Distance from Robot_pose to node_i
+			float c1 = abs( atof(nodeX.c_str()) - (float)Robot_coord[0] );
+			float c2 = abs( atof(nodeY.c_str()) - (float)Robot_coord[1] );
+			float distance = sqrt( square(c1) + square(c2) );
+				
+			if (verbose)
+				printf("Node: %s|%s|%s at d=%.2f\n",nodeName.c_str(),nodeX.c_str(),nodeY.c_str(),distance);
 
-			//Did Robot_Topological_Place changed?
-			std::vector<size_t> neighbors;
-			graph.GetNodeNeighbors(idrobot,"Location",neighbors);
-			if (neighbors[0] != idtarget )
+			if ( (first_node) || (distance < min_distance) )
 			{
-				graph.DeleteOutcommingArcs(idrobot,"Location");
-				printf("Changing robot pose to %s\n",ROBOT_TOPOLOGICAL_PLACE->GetStringVal().c_str());
-				graph.AddArc(idrobot,idtarget,"robotpose","Location",id);
-				RefreshGraph();
-				//graph.SaveGraph("result.xml");
+				min_distance = distance;
+				closest_node = nodeName;
+				first_node = false;
 			}
+		}		
+			
+
+		if (pos != sNodes.length()-1)
+		{
+			//Delete node from list of Nodes to be parsed	
+			sNodes.erase(0, pos + delimiter.length());			
+		}
+		else
+		{
+			break;
+		}
+	}//end-while
+
+
+	//Update Graph
+	size_t id = 0;
+	size_t idrobot = graph.GetNodeId("Robot");
+
+	if( graph.ExistsNodeLabel(closest_node) )
+	{
+		size_t idtarget = graph.GetNodeId(closest_node);
+
+		//Did Robot_Topological_Place changed?
+		std::vector<size_t> neighbors;
+		graph.GetNodeNeighbors(idrobot,"Location",neighbors);
+		if (neighbors[0] != idtarget )
+		{
+			graph.DeleteOutcommingArcs(idrobot,"Location");
+			printf("Changing robot pose to %s\n",closest_node.c_str());
+			graph.AddArc(idrobot,idtarget,"robotpose","Location",id);
+			RefreshGraph();			
 		}
 	}
-	
+
+	//!  @moos_publish ROBOT_TOPOLOGICAL_PLACE The id of the closet node in the world model graph to the current robot position
+	m_Comms.Notify("ROBOT_TOPOLOGICAL_PLACE",closest_node);
+}
+
+
+bool CAHGraphApp::Iterate()
+{
+	//Set current Robot topological place (closest Node)
+	UpdateTopologicalPlace();
+
 	return true;
 }
 
@@ -159,8 +246,8 @@ bool CAHGraphApp::DoRegistrations()
 	//! @moos_subscribe	GET_PATH
 	AddMOOSVariable("GET_PATH", "GET_PATH", "GET_PATH",0);
 
-	//! @moos_subscribe	ROBOT_TOPOLOGICAL_PLACE
-	AddMOOSVariable("ROBOT_TOPOLOGICAL_PLACE","ROBOT_TOPOLOGICAL_PLACE","ROBOT_TOPOLOGICAL_PLACE",0);
+	//! @moos_subscribe	LOCALIZATION
+	AddMOOSVariable("LOCALIZATION","LOCALIZATION","LOCALIZATION",0);
 
 	//! @moos_subscribe	ADD_NODE
 	AddMOOSVariable("ADD_NODE", "ADD_NODE", "ADD_NODE",0);
@@ -209,8 +296,8 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		if( i->GetName() == "GET_PATH" ) 
 		{			
 			std::deque<std::string> lista;
-			mrpt::system::tokenize(i->GetString()," ",lista);			
-			printf( "\n\nSearching a path to %s\n",lista.back().c_str());			
+			mrpt::system::tokenize(i->GetString()," ",lista);
+			printf( "\n\nSearching a path to %s\n",lista.back().c_str());
 			size_t idtarget = graph.GetNodeId(lista.back());
 			size_t idrobot = graph.GetNodeId("Robot");
 
@@ -240,7 +327,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				{
 					printf( "Path found!! - Publishing new PATH variable.");
 					//! @moos_publish PATH Sequence of nodes from "robot" to provided destiny in response to the "GET_PATH" var.
-					m_Comms.Notify("PATH", format("%s %s",lista.back().c_str(),path.c_str()));
+					m_Comms.Notify("PATH", format("%s %s",lista[0].c_str(),path.c_str()));
 				}
 				else
 				{

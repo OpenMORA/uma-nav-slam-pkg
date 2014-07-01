@@ -55,9 +55,12 @@ protected:
 	bool DoRegistrations();
 
 	void RefreshGraph();
+
+	void UpdateTopologicalPlace();
+
 	CAHGraph graph;
 	std::string world_model_file;
-
+	bool verbose;
 	// DATA. Your local variables here...
 
 };
