@@ -28,14 +28,14 @@
 
 /**  @moos_module Module that keeps a list of the high-level tasks commanded to the robot.
   *  New tasks are received via the MOOSvariable "NEW_TASK"
-  *  This module implements methods to create ande delete tasks, 
+  *  This module implements methods to create and delete tasks, 
   *  and to publish the list of current pending tasks to be scheduled by the Planner module.
   *
   *  Requiered modules: Planner, StateCharts and Executor.
   */
 
 //!  @moos_var NEW_TASK Variable containing the necessary parameters to create a new task in the [Agenda] module.
-//!  The structure of this variable is:  NEW_TASK "UserID UserTaskID Command Task"
+//!  The structure of this variable is:  NEW_TASK "UserID UserTaskID Command Arguments"
 //!		UserID (string)      Unique identifier of the user
 //!		UserTaskID (size_t)  The local id of the task (from the user persepective)
 //!		Command (char*)	  	 Command to execute
@@ -147,18 +147,25 @@ bool CAgendaApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		if (i->GetName()=="NEW_TASK")
 		{
 			// Parse the incomming string to obtain all necessary fields
-			// NEW_TASK: "UserID   UserTaskID   Command   Task"
+			// NEW_TASK: "UserID   UserTaskID   Command   Parameters"
 			std::deque<std::string> lista;
 			mrpt::system::tokenize(i->GetString().c_str()," ",lista);			
 			std::string goal;
-			for (size_t j=3;j<lista.size();j++)
+			if( lista.size()<3 )
 			{
-				goal=goal+lista[j]+" ";
+				printf("[Agenda]ERROR when parsing NEW_TASK. Not all fields defined. Nothing Done.\n");
+				printf("[Agenda] Wrong task was: NEW_TASK %s\n",i->GetString().c_str());
+				printf("[Agenda] Correct format is: NEW_TASK UserID UserTaskID Command Parameters\n");
 			}
-
-			// Add task to list
-			// ReceiveTask(std::string userid, size_t usertaskid, const char * command, const char * task, int priority, bool parallel)
-			tm.ReceiveTask(lista[0], atoi(lista[1].c_str()), lista[2].c_str(), goal.c_str(), true);
+			else
+			{
+				for (size_t j=3;j<lista.size();j++)
+					goal=goal+lista[j]+" ";
+				
+				// Add task to list
+				// ReceiveTask(std::string userid, size_t usertaskid, const char * command, const char * task, int priority, bool parallel)
+				tm.ReceiveTask(lista[0], atoi(lista[1].c_str()), lista[2].c_str(), goal.c_str(), true);		
+			}			
 		}
 
 
