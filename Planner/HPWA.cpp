@@ -577,7 +577,7 @@ void HPWA::GetInformation(const std::string what, std::string &value, double tim
 		pet_id++;												//Increase the counter of information petitions (unique identificator)
 		pet_map.insert(pet_pair(pet_id,what));					//Add the new petition to the stack (pet_ID, what)
 		asked_petitions.insert(pet_id);							//Add petition to list of pending questions (controled by the Iterate process of the Planer)
-		printf("Getting information %d,%s\n",pet_id, what.c_str());
+		printf("[HPWA:GetInformation] New petition request id=%d: '%s'\n",pet_id, what.c_str());
 	pet_sem.leave();
 
 	//Wait until petition is answered. Search by petitionID
@@ -590,8 +590,10 @@ void HPWA::GetInformation(const std::string what, std::string &value, double tim
 			pet_it = answer_map.find(pet_id);	//check if petition is solved.
 			if (pet_it != answer_map.end())
 			{
-				//Petition was solved.			
+				//Petition was solved.
 				value = pet_it->second;			//Response to petition = "params of response"
+				printf("[HPWA:GetInformation] Petition id=%d solved: Response = %s\n",pet_id,value.c_str() );
+				
 				pet_map.erase(pet_id);			//Remove petition
 				answer_map.erase(pet_it);
 				end=true;
@@ -927,6 +929,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 				if (result!="NOTFOUND")
 				{  
 					//The node_label is a user, try navigating to its location
+					std::cout << "[Planner] Navigating to USER node" << std::endl;
 					solved = PathSearch((char*)result.c_str(),plan);
 
 					action.clear();
@@ -937,6 +940,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 				else 
 				{
 					//The node_label is not a user, try to navigate to it
+					std::cout << "[Planner] Navigating to TOPOLOGY node" << std::endl;
 					solved = PathSearch((char*)param[0].c_str(),plan);
 				}
 			}
@@ -954,83 +958,88 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 	//---------------------------------------------------
 	else
 	{
-		if (command=="PAUSE_MOVE" || command=="RESUME_MOVE" || command=="SAY_TIME" ||
-			command=="SAY_WEATHER" || command=="SAY_DATE" || command=="PLAY_ITEM" || command=="WAIT_TO_START" || command=="START" ||
-			command=="END"||command=="WAIT_TO_PRESENT"||command=="PRESENT" || command=="SAY_JOKES" || command=="END_SAY_JOKES" ||
-			command=="WAIT_TO_GO" || "UNDOCK")
+		if (command=="UNDOCK")
 		{
-			if (command=="UNDOCK")
-			{
-					action.clear();
-					action.push_back("PUBLISH");
-					action.push_back("PARKING 0");
-					plan.push_back(action);
+			action.clear();
+			action.push_back("PUBLISH");
+			action.push_back("PARKING 0");
+			plan.push_back(action);
 
-					action.clear();
-					action.push_back("PUBLISH");
-					action.push_back("ENABLE_MOTORS 1");
-					plan.push_back(action);
+			action.clear();
+			action.push_back("PUBLISH");
+			action.push_back("ENABLE_MOTORS 1");
+			plan.push_back(action);
 
-					action.clear();
-					action.push_back("PUBLISHF");
-					action.push_back("MOTION_CMD_V -0.1");
-					plan.push_back(action);
+			action.clear();
+			action.push_back("PUBLISHF");
+			action.push_back("MOTION_CMD_V -0.1");
+			plan.push_back(action);
 
-					action.clear();
-					action.push_back("WAIT_TIME");
-					action.push_back("0.07");
-					plan.push_back(action);
+			action.clear();
+			action.push_back("WAIT_TIME");
+			action.push_back("0.07");
+			plan.push_back(action);
 				
-					action.clear();
-					action.push_back("PUBLISHF");
-					action.push_back("MOTION_CMD_V 0.0");
-					plan.push_back(action);
+			action.clear();
+			action.push_back("PUBLISHF");
+			action.push_back("MOTION_CMD_V 0.0");
+			plan.push_back(action);
 
-/*					action.clear();
-					action.push_back("PUBLISHF");
-					action.push_back("MOTION_CMD_W 0.53");
-					plan.push_back(action);
+			/*
+			action.clear();
+			action.push_back("PUBLISHF");
+			action.push_back("MOTION_CMD_W 0.53");
+			plan.push_back(action);
 
-					action.clear();
-					action.push_back("WAIT_TIME");
-					action.push_back("0.15");
-					plan.push_back(action);
+			action.clear();
+			action.push_back("WAIT_TIME");
+			action.push_back("0.15");
+			plan.push_back(action);
 					
-					action.clear();
-					action.push_back("PUBLISHF");
-					action.push_back("MOTION_CMD_W 0.0");
-					plan.push_back(action);
-
-					*/
-					solved=true;			
-			}
-
-			else if (command=="SAY_TIME")
-			{
-				std::string horatext;
-				Hora(horatext);
-				action.push_back("SAY");
-				action.push_back(horatext);
-				plan.push_back(action);
-				solved=true;
-			}
-
-			else if (command=="PLAY_ITEM")
-			{
-				action.push_back("PLAY");
-				//action.push_back("test.odp");
-				plan.push_back(action);
-				solved=true;
-			}
-
-			else
-			{
-				action.push_back(command);
-				plan.push_back(action);
-				solved=true;
-			}
+			action.clear();
+			action.push_back("PUBLISHF");
+			action.push_back("MOTION_CMD_W 0.0");
+			plan.push_back(action);
+			*/
+			solved=true;			
 		}
 
+		else if (command=="SAY_TIME")
+		{
+			std::string horatext;
+			Hora(horatext);
+			action.push_back("SAY");
+			action.push_back(horatext);
+			plan.push_back(action);
+			solved=true;
+		}
+
+		else if (command=="PLAY_ITEM")
+		{
+			action.push_back("PLAY");
+			//action.push_back("test.odp");
+			plan.push_back(action);
+			solved=true;
+		}
+
+		else if (command=="PAUSE_MOVE" 
+			  || command=="RESUME_MOVE" 
+			  || command=="SAY_WEATHER" 
+			  || command=="SAY_DATE" 
+			  || command=="WAIT_TO_START" 
+			  || command=="START" 
+			  || command=="END"
+			  || command=="WAIT_TO_PRESENT"
+			  || command=="PRESENT" 
+			  || command=="SAY_JOKES" 
+			  || command=="END_SAY_JOKES" 
+			  || command=="WAIT_TO_GO")
+		{
+			action.push_back(command);
+			plan.push_back(action);
+			solved=true;
+		}
+		
 		//Command not implemented!
 		else
 		{
@@ -1042,7 +1051,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 
 	// If task command found, execute the corresponding actions in the "plan"
 	//-----------------------------------------------------------------------
-	if (solved )
+	if(solved)
 	{
 		// Print Plan (list of actions)
 		printf("----------\n");
@@ -1070,7 +1079,15 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 		comm_sem.leave();
 	}
 	else if (!solved)
-		printf("TASK COMMAND NOT FOUND: NOT SOLVED\n");
+	{
+		printf("[Planner: HPWA]FAILURE:Task Command not found or imposible to solve.\n");
+
+		//Inform that the task has finished
+		//! @moos_publish PLAN_FINISHED  Variable that inform that a Plan (task) has finished.
+		//! @moos_var PLAN_FINISHED  Variable that inform that a Plan (task) has been completely executed.
+		//! Format: PLAN_FINISHED TaskID UserTaskID UserID
+		m_Comms.Notify("PLAN_FINISHED",mrpt::format("%u %u %s",(int)taskid,(int)localtaskid,taskowner.c_str() ));
+	}
 
 	//mrpt::system::sleep(1000);
 	//CurrentPlanning.erase(taskid);
@@ -1122,7 +1139,7 @@ bool HPWA::PathSearch(char *dest, tabla &plan, bool verbose, bool execute)
 	bool solved = false;	
 	if (verbose) 
 		printf("---------SEARCHING PATH AT GROUND LEVEL -------------\n");
-		
+	
 	//Ask the WorldModel module if such path exists: GET_PATH request
 	std::string result;
 	GetInformation(mrpt::format ("GET_PATH %s",dest), result);		//result = "PATH response"
@@ -1134,11 +1151,12 @@ bool HPWA::PathSearch(char *dest, tabla &plan, bool verbose, bool execute)
 	// result = OpenMORA Variable PATH after removing the petitionID
 	// Path = "NOTFOUND"  (If node or path not found in the topology)
 	// Path = "(nodeID1 nodeLabel1 nodeX1 nodeY1) (nodeID2 nodeLanel2 nodeX2 nodeY2)..."	
-	solved = true;
+	
 	if (tok.size()==1 && tok[0]=="NOTFOUND")
 		solved = false;
 	else
 	{
+		solved = true;
 		//Generate sequence of actions, to run the path
 		for (size_t i=0;i<tok.size();i+=4)
 		{

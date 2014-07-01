@@ -29,7 +29,7 @@
 /**  @moos_module A module that schedules complex (high level) tasks into a sequence of small, simple routines.
   *  This module obtain a list of pending tasks from the Agenda module and tries to schedule them according to compatibility
   *  and priority values. Each task is planned in a new thread which is closed when the task finished.
-  *  Each task is decomposed ina list of actions (called plan), and send to the Executor module.
+  *  Each task is decomposed in a list of actions (called plan), and send to the Executor module.
   *
   *  Requiered modules: Agenda, StateCharts and Executor.
   */
@@ -66,15 +66,17 @@ bool CPlannerApp::OnStartUp()
 	// Read parameters (if any) from the mission configuration file.
 	
 	//! @moos_param   num_actions
-	m_MissionReader.GetConfigurationParam("num_actions",num_actions);
+	num_actions = m_ini.read_int("","num_actions",0,true);	
 	
-	//! @moos_param   actions_names The names of the Actions to load
-	m_MissionReader.GetConfigurationParam("actions_names",actions_names);
+	//! @moos_param   actions_names The names of the Actions to load	
+	actions_names = m_ini.read_string("","actions_names","",true);
+	
 
 	// Get compatibility list between actions
 	std::vector<std::string> comp_list;
 
-    printf("Loading %d actions from %s\n",num_actions,actions_names.c_str());
+	
+    printf("Loading %d actions from %s\n",num_actions,actions_names.c_str());	
 	for (size_t i=0;i<num_actions;i++)
 	{
 		std::string name;
@@ -106,7 +108,7 @@ bool CPlannerApp::Iterate()
 {
 	IterateBase();
 
-	// Are there	
+	// Is plan finished?	
 	CMOOSVariable *PLAN_FINISHED = GetMOOSVar("PLAN_FINISHED");
 	if (PLAN_FINISHED && PLAN_FINISHED->IsFresh())
 	{
@@ -151,9 +153,9 @@ bool CPlannerApp::Iterate()
 	if (path && path->IsFresh())
 	{
 		path->SetFresh(false);
-		printf("[%s]\n",path->GetStringVal().c_str());
+		printf("[Planner:Iterate] New Path received: '%s'",path->GetStringVal().c_str());
 
-		planner.pet_sem.enter();			
+		planner.pet_sem.enter();
 			std::deque<std::string> cad;
 			mrpt::system::tokenize(path->GetStringVal()," ",cad);
 			// remove the petitionID identifier from response
