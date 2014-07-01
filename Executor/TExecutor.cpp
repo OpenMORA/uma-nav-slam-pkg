@@ -17,7 +17,23 @@ void TaskExecutor::Moving()
 	using namespace mrpt::random;
 	double x,y;
 
-	GetInformation("GET_NODE_POSITION publico",x,y);
+	//GetInformation("GET_NODE_POSITION publico",x,y);
+	std::string response;
+	GetInformation("GET_NODE_POSITION publico",response);
+	//Get node location from response string
+	std::deque<std::string> lista;
+	mrpt::system::tokenize(response," ",lista);
+	if (lista.size()==2)	//x y
+	{
+		x=atof(lista[0].c_str());
+		y=atof(lista[1].c_str());		
+	}
+	else
+	{
+		printf("[TExecutor: Moving] Error while getting the NODE_POSITION of publico\n");
+		return;
+	}
+
 	printf("Audience is at %f,%f\n",x,y);
 
     while (!domotica)
@@ -225,23 +241,26 @@ void TaskExecutor::FileCommands(std::string path)
 	}
 }
 
+//---------------------------------
+// Constructor
+// --------------------------------
 TaskExecutor::TaskExecutor(COpenMORAApp::CDelayedMOOSCommClient &Comms):m_Comms(Comms)
 {
 
 	errorlist="";
-
-
+	
 	action_index=-1;
 	executed_index=0;//ultima accion ejecutada con exito
 
 	internal_status=5;
 
 	strcpy(systemstatus,"");
+	
+	cancel_current_plans = false;
+	startednavigation = false;
+	errornavigation = false;
+	endnavigation = false;
 
-
-	startednavigation=false;
-	errornavigation=false;
-	endnavigation=false;
 	end_vision_camshift=false;
 	end_speak=false;
 	endjoke=false;
@@ -259,13 +278,9 @@ TaskExecutor::TaskExecutor(COpenMORAApp::CDelayedMOOSCommClient &Comms):m_Comms(
 	present=false;				//start the presentation
 	ready=false;				//start the navigation loop
 
-
 	finishedppt=false;
 
 	//size_t texecutor_id=0;
-
-
-
 }
 
 // Save list of jokes
@@ -416,12 +431,14 @@ bool TaskExecutor::PendingPetitions()
 }
 
 
-//----------------------------------------------------------------------------
-// GetInformation(what, x, y, timeout)
+
+//--------------------------------------------------------------------------------------------------------
+// GetInformation(what, response, timeout)
 // Method to request information from other modules (trough OpenMORA variables)
-// what = String with the OpenMORA variable to request. Currently limited to GET_NODE_POSITION nodeLabel
-//------------------------------------------------------------------------------
-bool TaskExecutor::GetInformation(const std::string what, double &x,double &y,double timeout)
+// what = String with the OpenMORA variable to request.
+// response = string with the variable content requested
+//--------------------------------------------------------------------------------------------------------
+void TaskExecutor::GetInformation(const std::string what,std::string response,double timeout)
 {
 	pet_sem.enter();
 		pet_id++;									//increase counter of pending petitions
@@ -442,28 +459,14 @@ bool TaskExecutor::GetInformation(const std::string what, double &x,double &y,do
 			if (pet_it!=answer_map.end())
 			{
 				//petition answered
-				value = pet_it->second;		//value = NOTFOUND or (x y)
+				response = pet_it->second;
 				pet_map.erase(pet_id);
 				answer_map.erase(pet_it);
 				end = true;
 			}
 		pet_sem.leave();
 	}
-
-
-	//Get node location from value
-	std::deque<std::string> lista;
-	mrpt::system::tokenize(value," ",lista);
-	if (lista.size()==2)	//x y
-	{
-		x=atof(lista[0].c_str());
-		y=atof(lista[1].c_str());
-		return true;
-	}
-	else					//NOTFOUND
-		return false;
 }
-
 
 
 //---------------------------------------------------------------
@@ -473,7 +476,8 @@ bool TaskExecutor::GetInformation(const std::string what, double &x,double &y,do
 //----------------------------------------------------------------
 void TaskExecutor::ExecutePlan(PlanInfo &p)
 {
-	bool error=false;
+	bool error = false;
+	cancel_current_plans = false;
 	//bool worldchanges=false;
 
 	//Cuidado p.actions[i].name es el nombre de la accion desde el punto de vista
@@ -488,7 +492,7 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 	unsigned int i=0;				// Index to run all the actions in the current plan
 
 	//Execute all actions in the Plan
-	while (i<p.actions.size())
+	while (i<p.actions.size() && !cancel_current_plans)
 	{
 		int num_param = p.actions[i].param.size();		//Get num of params of the current action
 		printf("-->Action %s with %d params\n",p.actions[i].name.c_str(),num_param);
@@ -601,8 +605,8 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 		}
 
 
-		// CANCEL_NAV
-		//-----------
+		// CANCEL_NAV: Cancels the reactive Navigation
+		//---------------------------------------------
 		else if (p.actions[i].name=="CANCEL_NAV")
 		{
 			printf("Action CANCEL_NAV\n");
@@ -738,13 +742,25 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 		{
 			double x,y;
 			printf("Looking at %s\n",p.actions[i].param[0].c_str());
-			if (GetInformation("GET_NODE_POSITION "+p.actions[i].param[0],x,y))
-			{///It blocks here,
+
+			//GetInformation(""GET_NODE_POSITION "+p.actions[i].param[0],x,y);
+			std::string response;
+			GetInformation("GET_NODE_POSITION "+p.actions[i].param[0],response);
+			//Get node location from response string
+			std::deque<std::string> lista;
+			mrpt::system::tokenize(response," ",lista);
+			if (lista.size()==2)	//x y
+			{
+				x=atof(lista[0].c_str());
+				y=atof(lista[1].c_str());
 				printf("Looking at %f,%f\n",x,y);
 				m_Comms.Notify("LOOK_AT_POINT",format("[%f %f]",x,y));
 				while (!endnavigation){mrpt::system::sleep(100);}
 			}
-			else printf("position not found!!\n");
+			else
+			{
+				printf("[TExecutor: LOOK_AT] Error while getting the NODE_POSITION of %s\n",p.actions[i].param[0].c_str() );				
+			}
 		}
 
 
@@ -769,9 +785,9 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 		//---------------------
 		else if (p.actions[i].name=="GO")
 		{
-			error=false;
-			endnavigation=false;
-			errornavigation=false;			
+			error = false;
+			endnavigation = false;
+			errornavigation = false;			
 
 			if (num_param>1)
 			{
@@ -783,22 +799,21 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 				//Commands a reactive navigation to given point
 				const std::string s = format("[%.03f %.03f]", atof(param2.c_str()),atof(param3.c_str()));
 				m_Comms.Notify("NAVIGATE_TARGET",s);
-
+				
 				//Wait till navigation complete
 				printf("Waiting for reaching %s\n",param1.c_str());
-				while (!endnavigation && !errornavigation)
+				while (!endnavigation && !errornavigation && !cancel_current_plans)
 					mrpt::system::sleep(100);
 
 				error = error || errornavigation;
 
-				if (!error)
-				{
-					//Update the pose of the robot i nthe graph
-					m_Comms.Notify("ROBOT_TOPOLOGICAL_PLACE",param1);
-				}
+				//if (!error)
+				//{
+				//	//Update the pose of the robot in the graph
+				//	m_Comms.Notify("ROBOT_TOPOLOGICAL_PLACE",param1);
+				//}
 			}
 		}
-
 		
 		
 		//SKYPE
@@ -816,7 +831,12 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 
 				while (!end_speak) sleep(100);
 		}
+
+		
+
+		//-----------------------------------------------------
 		//END OF ACTIONS
+		//-----------------------------------------------------
 
 		if (error)
 		{
@@ -831,7 +851,7 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 
 
 	//mrpt::utils::sleep(2000);
-	printf("Plan finished with timestamp %u (%u)\n",(unsigned int)p.timestamp,(unsigned int)p.localtaskid);
+	printf("[Executor]Plan finished with taskID %u Owner %s LocalTaskID %u\n",(unsigned int)p.timestamp,p.address.c_str(),(unsigned int)p.localtaskid);
 	executedplans.push_back(p.timestamp);
 
 	//Sends event of plan finished

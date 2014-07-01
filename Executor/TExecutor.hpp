@@ -95,6 +95,7 @@ public:
 
 	unsigned int action_finished;	//indica si hay una notificacion de accion terminada
 
+	bool cancel_current_plans;		//To cancel all current plans in executions (different threads)
 	bool startednavigation;
 	bool errornavigation;
 	bool endnavigation;
@@ -123,7 +124,7 @@ public:
 	void CopyPlanfromString(const std::string plan,PlanInfo &out);
     void PrintPlan(PlanInfo &plan);
 
-	bool GetInformation(const std::string what,double &x,double &y,double timeout=0);
+	void GetInformation(const std::string what,std::string response,double timeout=0);
 	bool PendingPetitions();
 	mrpt::synch::CCriticalSection pet_sem;
 

@@ -216,9 +216,28 @@ bool CExecutorApp::Iterate()
 			printf("[Excutor:Iterate]Pending petition: %s\n",petition.c_str());
 			std::deque<std::string> lista;
 			mrpt::system::tokenize(petition," ",lista);
-			//Notify VBLE_NAME petitionID parameter
-			m_Comms.Notify( lista[0], format("%lu %s",te.pet_map.begin()->first,lista[1].c_str()) );
-			te.asked_petitions.erase(te.pet_map.begin()->first);
+
+			if( lista[0]=="LOCALIZATION" || lista[0]=="GRAPH" )
+			{
+				CMOOSVariable * pVar = GetMOOSVar( lista[0] );
+				if( pVar && pVar->IsFresh() )
+				{
+					pVar->SetFresh(false);
+					// answer_map(petitionID, response)
+					te.answer_map.insert( pet_pair(te.pet_map.begin()->first, pVar->GetStringVal()) );
+				}
+				else
+				{
+					// answer_map(petitionID, response)
+					te.answer_map.insert( pet_pair(te.pet_map.begin()->first, "NOT_AVAILABLE") );
+				}
+			}			
+			else if( lista[0]=="GET_NODE_LABEL" )
+			{
+				//Notify VBLE_NAME petitionID parameter
+				m_Comms.Notify( lista[0], format("%lu %s",te.pet_map.begin()->first,lista[1].c_str()) );
+				te.asked_petitions.erase(te.pet_map.begin()->first);
+			}
 		te.pet_sem.leave();
 	}
 
@@ -275,10 +294,19 @@ bool CExecutorApp::DoRegistrations()
 	AddMOOSVariable("NAV_EVENT_NOWAY","NAV_EVENT_NOWAY","NAV_EVENT_NOWAY",0);
 	AddMOOSVariable("NAV_EVENT_START","NAV_EVENT_START","NAV_EVENT_START",0);
 
-	//! @moos_subscribe  IN_EXECUTION, NODE_POSITION, VOICE_EVENT_DONE
+	//! @moos_subscribe  IN_EXECUTION
 	AddMOOSVariable("IN_EXECUTION","IN_EXECUTION","IN_EXECUTION",0);
+	//! @moos_subscribe  CANCEL_IN_EXECUTION
+	AddMOOSVariable( "CANCEL_IN_EXECUTION", "CANCEL_IN_EXECUTION", "CANCEL_IN_EXECUTION", 0 );
+
+	//! @moos_subscribe  NODE_POSITION, VOICE_EVENT_DONE
 	AddMOOSVariable("NODE_POSITION","NODE_POSITION","NODE_POSITION",0);
 	AddMOOSVariable("VOICE_EVENT_DONE","VOICE_EVENT_DONE","VOICE_EVENT_DONE",0);
+
+	//! @moos_subscribe LOCALIZATION
+	AddMOOSVariable( "LOCALIZATION", "LOCALIZATION", "LOCALIZATION", 0 );
+	//! @moos_subscribe GRAPH
+	AddMOOSVariable( "GRAPH", "GRAPH", "GRAPH", 0 );
 
 	//! @moos_subscribe SHUTDOWN
 	AddMOOSVariable( "SHUTDOWN", "SHUTDOWN", "SHUTDOWN", 0 );
@@ -299,8 +327,11 @@ bool CExecutorApp::OnNewMail(MOOSMSG_LIST &NewMail)
 	{
 		//New plan (list of actions) as result of new task
 		if (i->GetName()=="IN_EXECUTION")
-				te.DoPlan(i->GetString());
+			te.DoPlan(i->GetString());
 
+		//Cancel all current plans being executed.
+		if (i->GetName()=="CANCEL_IN_EXECUTION")
+			te.cancel_current_plans = true;
 
 		if( (i->GetName()=="SHUTDOWN") && (MOOSStrCmp(i->GetString(),"true")) )
 		{
