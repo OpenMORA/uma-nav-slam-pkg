@@ -98,9 +98,12 @@ bool CRobotControllerApp::OnStartUp()
 		// BATTERY STATUS
 		//! @moos_param check_battery_status Indicates (true/false) if the robot controller should periodically check the battery status and return to Docking when low.
 		check_battery_status = m_ini.read_bool(section,"check_battery_status","true",true);
+		//! @moos_param battery_threshold Battery level that once is reached will cause the robot to go Recharge
+		battery_threshold = m_ini.read_float(section,"battery_threshold",25.0,false);
 
 		mqtt_status = "";
 		Is_Charging = 1.0;		//Start as charging (default behaviour)
+		last_bettery_display_time = mrpt::system::now();
 		printf("[RobotController]: Initial configuration done.\n");
 		return DoRegistrations();
     }
@@ -129,10 +132,51 @@ bool CRobotControllerApp::Iterate()
 {
 	try
 	{
-		//If not charging check stuff
-		if (Is_Charging==0.0)
+		// Check Batery status
+		//---------------------
+		CMOOSVariable * pVarBattery = GetMOOSVar( "BATTERY_V" );
+		if( pVarBattery && pVarBattery->IsFresh() )
 		{
-			//Check that MQTT is alive (related to Wifi connectivity) and that Client is connected
+			pVarBattery->SetFresh(false);
+			CSerializablePtr obj;
+			mrpt::utils::RawStringToObject(pVarBattery->GetStringVal(),obj);
+				
+			if( IS_CLASS(obj, CObservationBatteryState) )
+			{
+				mrpt::slam::CObservationBatteryStatePtr battery_obs = mrpt::slam::CObservationBatteryStatePtr(obj);
+				
+				// Display value
+				if( mrpt::system::timeDifference(last_bettery_display_time,mrpt::system::now())>5.0 )
+				{
+					cout << "[Robot_Control_Manager]: Battery voltage is: " << battery_obs->voltageMainRobotBattery << endl;
+					last_bettery_display_time =  mrpt::system::now();
+				}
+
+				// Check if low battery
+				if( Is_Charging==0.0 && check_battery_status && battery_obs->voltageMainRobotBattery <= battery_threshold )
+				{
+					//BATTERY IS LOW -> Cancel current actions, plans, and reactive navigations. Command the robot to Recharge!
+					cout << "[Robot_Control_Manager]: BATTERY voltage too low!!!\n Returning to Docking station." << endl;
+						
+					//! @moos_publish PNAVIGATORREACTIVEPTG3D_CMD Request the reactive3D to stop current navigation
+					m_Comms.Notify("PNAVIGATORREACTIVEPTG3D_CMD", "CANCEL");
+					//! @moos_publish RANDOM_NAVIGATOR Activates/Deactivates the random navigator module
+					m_Comms.Notify("RANDOM_NAVIGATOR", 0.0);
+					//! @moos_publish CANCEL_IN_EXECUTION Cancel current Navigation Plans (Executor)
+					m_Comms.Notify("CANCEL_IN_EXECUTION", 1.0);
+						
+					//Command a Navigation to Docking node.
+						
+				}					
+			}
+			else
+				cout << "[Robot_Control_Manager]: ERROR: MOOS topic: BATERY_V is not CObservationBatteryStatePtr" << endl;
+		}
+		
+
+		//Check that MQTT is alive (related to Wifi connectivity) and that Client is connected
+		if (Is_Charging==0.0)
+		{			
 			CMOOSVariable * pVarMQTT = GetMOOSVar( "MQTT_CONNECT_STATUS" );		
 			if( pVarMQTT )
 			{
@@ -143,7 +187,6 @@ bool CRobotControllerApp::Iterate()
 					cout << "[Robot_Control_Manager]: MQTT status is: " << pVarMQTT->GetStringVal() << endl;
 				}
 			
-
 				if( use_client_alive_ack && mrpt::system::timeDifference(last_mqtt_ack_time,mrpt::system::now()) > max_client_ack_interval)
 				{				
 					if( Robot_control_mode == 2 )
@@ -168,33 +211,7 @@ bool CRobotControllerApp::Iterate()
 				}
 			}
 			else
-				cout << "[Robot_Control_Manager]: ERROR - MQTT status UNKNOWN" << endl;
-
-			//Check Batery status
-			CMOOSVariable * pVarBattery = GetMOOSVar( "BATTERY_V" );
-			if( check_battery_status && pVarBattery && pVarBattery->IsFresh() )
-			{
-				pVarBattery->SetFresh(false);
-				CSerializablePtr obj;				
-				mrpt::utils::RawStringToObject(pVarBattery->GetStringVal(),obj);
-				
-				if ( IS_CLASS(obj, CObservationBatteryState ))
-				{
-					mrpt::slam::CObservationBatteryStatePtr battery_obs = mrpt::slam::CObservationBatteryStatePtr(obj);
-					if( battery_obs->voltageMainRobotBattery < 25.4)	//20% battery aprox
-					{
-						//BATTERY IS LOW -> Cancel and Recharge!
-						cout << "[Robot_Control_Manager]: BATTERY voltage too low!!!\n Returning to Docking station." << endl;
-						//! @moos_publish PNAVIGATORREACTIVEPTG3D_CMD Request the reactive3D to stop current navigation plan
-						m_Comms.Notify("PNAVIGATORREACTIVEPTG3D_CMD", "CANCEL");
-						//Command a Navigation to Docking node.
-						//! @moos_publish GET_PATH Request a navigation to especified node
-						m_Comms.Notify("GET_PATH", "Docking" );
-					}					
-				}
-				else
-					cout << "[Robot_Control_Manager]: ERROR: MOOS topic: BATERY_V is not CObservationBatteryStatePtr" << endl;
-			}
+				cout << "[Robot_Control_Manager]: ERROR - MQTT status UNKNOWN" << endl;			
 		}
 
 		return true;
@@ -293,9 +310,10 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		}
 		
 
-	    if (MOOSStrCmp(m.GetKey(),"NAVIGATE_TARGET"))
+	    if( MOOSStrCmp(m.GetKey(),"NAVIGATE_TARGET") )
 		{
 			//New target set
+			cout << "[Robot_Control_Manager] NAVIGATE_TARGET detected" << endl;
 			if (Robot_control_mode == 0)
 			{
 				//Set Autonomous mode
@@ -308,7 +326,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		}
 		
 
-		if (MOOSStrCmp(m.GetKey(),"CANCEL_NAVIGATION"))
+		if( MOOSStrCmp(m.GetKey(),"CANCEL_NAVIGATION") )
 		{
 			//Someone request to Cancel current Navigation!
 			if (Robot_control_mode == 2 && !MOOSStrCmp(working_mode,"onlyOpenMORA") )
@@ -333,14 +351,14 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		}
 
 
-		if (MOOSStrCmp(m.GetKey(),"PILOT_MQTT_ACK"))
+		if( MOOSStrCmp(m.GetKey(),"PILOT_MQTT_ACK") )
 		{
 			//Update time of last ACK
 			last_mqtt_ack_time = mrpt::system::now();
 		}
 		
 
-		if (MOOSStrCmp(m.GetKey(),"Is_Charging"))
+		if( MOOSStrCmp(m.GetKey(),"Is_Charging") )
 		{
 			//Update charging status
 			Is_Charging = m.GetDouble();
