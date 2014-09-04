@@ -850,6 +850,9 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 	}// end while actions
 
 
+	if( cancel_current_plans )
+		printf("[Executor]Plan finished because All Plans were cancelled\n");
+
 	//mrpt::utils::sleep(2000);
 	printf("[Executor]Plan finished with taskID %u Owner %s LocalTaskID %u\n",(unsigned int)p.timestamp,p.address.c_str(),(unsigned int)p.localtaskid);
 	executedplans.push_back(p.timestamp);

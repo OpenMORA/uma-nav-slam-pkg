@@ -57,14 +57,16 @@ protected:
 	size_t Robot_control_mode;							// The Opreation mode of the robot. 0=Manual, 2=Autonomous=(OpenMORA)
 	mrpt::system::TTimeStamp last_mqtt_ack_time;		// Stores the time of the last ACK from the Pilot-MQTT client 
 	mrpt::system::TTimeStamp last_bettery_display_time; // Stores the time of the last battery display
+	mrpt::system::TTimeStamp last_bettery_warning_time; // Stores the time of the last battery warning	
 	bool use_client_alive_ack;							// Indicates wheter this module should check the status of the ACK from Client (Ture/false)
 	bool check_mqtt_alive;								// Indicates wheter this module should check the status of MQTT (Ture/false)
 	bool check_battery_status;							// Indicates wheter this module should check the status of Battery (Ture/false)
-	float battery_threshold;							// Battery lvl (Volts) that will cause the robot to go recharge
+	float battery_threshold_warning, battery_threshold_recharge; // Battery lvl (Volts) that will cause the robot to go recharge or generate a warning
 	double max_client_ack_interval;						// Max number of seconds between ACK from the Client to set it is alive
 	bool verbose;
 	std::string working_mode, mqtt_status;
 	float Is_Charging;
+	bool going_to_docking;
 };
 
 #endif

@@ -98,12 +98,18 @@ bool CRobotControllerApp::OnStartUp()
 		// BATTERY STATUS
 		//! @moos_param check_battery_status Indicates (true/false) if the robot controller should periodically check the battery status and return to Docking when low.
 		check_battery_status = m_ini.read_bool(section,"check_battery_status","true",true);
-		//! @moos_param battery_threshold Battery level that once is reached will cause the robot to go Recharge
-		battery_threshold = m_ini.read_float(section,"battery_threshold",25.0,false);
+
+		//! @moos_param battery_threshold_warning Battery level that once is reached will generate a user warning
+		battery_threshold_warning = m_ini.read_float(section,"battery_threshold_warning",26.0,false);
+
+		//! @moos_param battery_threshold_recharge Battery level that once is reached will cause the robot to go Recharge
+		battery_threshold_recharge = m_ini.read_float(section,"battery_threshold_recharge",25.0,false);
 
 		mqtt_status = "";
 		Is_Charging = 1.0;		//Start as charging (default behaviour)
 		last_bettery_display_time = mrpt::system::now();
+		last_bettery_warning_time = mrpt::system::now();
+		going_to_docking = false;
 		printf("[RobotController]: Initial configuration done.\n");
 		return DoRegistrations();
     }
@@ -146,27 +152,62 @@ bool CRobotControllerApp::Iterate()
 				mrpt::slam::CObservationBatteryStatePtr battery_obs = mrpt::slam::CObservationBatteryStatePtr(obj);
 				
 				// Display value
-				if( mrpt::system::timeDifference(last_bettery_display_time,mrpt::system::now())>5.0 )
+				if( mrpt::system::timeDifference(last_bettery_display_time,mrpt::system::now())>0.0 )
 				{
 					cout << "[Robot_Control_Manager]: Battery voltage is: " << battery_obs->voltageMainRobotBattery << endl;
 					last_bettery_display_time =  mrpt::system::now();
 				}
 
+				//cout << "Charging = " << Is_Charging << "Docking= " << going_to_docking << "CHECK=" << check_battery_status << endl;
 				// Check if low battery
-				if( Is_Charging==0.0 && check_battery_status && battery_obs->voltageMainRobotBattery <= battery_threshold )
+				if( Is_Charging==0.0 && !going_to_docking && check_battery_status )
 				{
-					//BATTERY IS LOW -> Cancel current actions, plans, and reactive navigations. Command the robot to Recharge!
-					cout << "[Robot_Control_Manager]: BATTERY voltage too low!!!\n Returning to Docking station." << endl;
+					cout << "Checkign battery lvls" << endl;
+					if( battery_obs->voltageMainRobotBattery<=battery_threshold_recharge )
+					{
+						// Take Control
+						if( mrpt::system::timeDifference(last_bettery_warning_time,mrpt::system::now())>5.0 )
+						{
+							last_bettery_warning_time =  mrpt::system::now();
+
+							//BATTERY IS TOO LOW - EMERGENCY!
+							cout << "[Robot_Control_Manager]: BATTERY voltage too low!!!\n Returning to Docking station." << endl;
+					
+							// CANCEL ALL
+							//! @moos_publish PNAVIGATORREACTIVEPTG3D_CMD Request the reactive3D to stop current navigation
+							m_Comms.Notify("PNAVIGATORREACTIVEPTG3D_CMD", "CANCEL");
+							//! @moos_publish RANDOM_NAVIGATOR Activates/Deactivates the random navigator module
+							m_Comms.Notify("RANDOM_NAVIGATOR", 0.0);
+							//! @moos_publish CANCEL_IN_EXECUTION Cancel current Navigation Plans (Executor)
+							m_Comms.Notify("CANCEL_IN_EXECUTION", 1.0);
 						
-					//! @moos_publish PNAVIGATORREACTIVEPTG3D_CMD Request the reactive3D to stop current navigation
-					m_Comms.Notify("PNAVIGATORREACTIVEPTG3D_CMD", "CANCEL");
-					//! @moos_publish RANDOM_NAVIGATOR Activates/Deactivates the random navigator module
-					m_Comms.Notify("RANDOM_NAVIGATOR", 0.0);
-					//! @moos_publish CANCEL_IN_EXECUTION Cancel current Navigation Plans (Executor)
-					m_Comms.Notify("CANCEL_IN_EXECUTION", 1.0);
+							//GO DOCKING AUTONOMOUSLY
+							going_to_docking = true;						
+							//! @moos_publish NEW_TASK Request a new task to the Agenda.
+							//m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 505 MOVE Docking");
+							//Wait till arrive to Docking
+							//Activate Docking module
+							//! @moos_publish PARKING Activates/Desactivates de Autodocking assistant
+							m_Comms.Notify("ROBOT_CONTROL_MODE", 2.0);
+							m_Comms.Notify("PARKING", 1.0);
+						}
+						else
+							 cout << "tdif = "<< mrpt::system::timeDifference(last_bettery_warning_time,mrpt::system::now()) << endl;
 						
-					//Command a Navigation to Docking node.
-						
+					}
+					else if( battery_obs->voltageMainRobotBattery <= battery_threshold_warning )
+					{
+						// Generate Warning
+						if( mrpt::system::timeDifference(last_bettery_warning_time,mrpt::system::now())>60.0 )
+						{
+							cout << "[Robot_Control_Manager]: WARNING battery voltage is getting low!!!\n Please proceed to recharge station." << endl;
+							//! @moos_publish NEW_TASK Request a new task to the Agenda.
+							m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 1 SAY Warning. Battery is getting low. Please take me to the docking station.");
+							last_bettery_warning_time =  mrpt::system::now();
+						}
+						else
+							 cout << "tdif = "<< mrpt::system::timeDifference(last_bettery_warning_time,mrpt::system::now()) << endl;
+					}	
 				}					
 			}
 			else
@@ -307,6 +348,14 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 						cout << "Control Mode set to (0) - MANUAL" << endl;
 				}		
 			}
+			else if( cad[2]=="ROBOT_CONTROLLER" && atoi(cad[1].c_str())==505)
+			{
+				//Navigation to Docking node ended: Activate AutoDocking module!
+				//! @moos_publish PARKING Variable that indicates when the robot should start the Docking process.
+				m_Comms.Notify("PARKING", 1.0);
+				if (verbose)
+					cout << "Activating AutoDocking Module" << endl;				
+			}
 		}
 		
 
@@ -339,6 +388,9 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				m_Comms.Notify("RANDOM_NAVIGATOR", 0.0);
 				//! @moos_publish CANCEL_IN_EXECUTION Cancel current Navigation Plans (Executor)
 				m_Comms.Notify("CANCEL_IN_EXECUTION", 1.0);
+				//! @moos_publish PARKING Variable that indicates when the robot should start the Docking process.
+				m_Comms.Notify("PARKING", 0.0);
+				going_to_docking = false;
 
 				Robot_control_mode = 0;
 				//! @moos_publish ROBOT_CONTROL_MODE The Giraff working mode: 0=Manual=Pilot, 2=Autonomous=OpenMORA		
@@ -362,7 +414,9 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		{
 			//Update charging status
 			Is_Charging = m.GetDouble();
-			cout << "[Robot_Control_Manager]: Giraff Charging status = " << Is_Charging << endl;
+			cout << "[Robot_Control_Manager]: Giraff Charging status changed to: " << Is_Charging << endl;
+			if( Is_Charging == 1.0 )
+				going_to_docking = false; //Already there
 		}
 		
 
