@@ -138,11 +138,15 @@ void CAHGraph::GetNodeNeighbors(const size_t idnode,const std::string arc_type,s
   */
 void CAHGraph::GetAllNodes(std::string &list)
 {
-	list="";
+	printf("Getting all nodes in Topology: %u\n",grafo.nodeCount());
+	list="";	
+
 	for (TNodeList::const_iterator it=grafo.begin();it!=grafo.end();++it)
 	{
 		std::string label=it->second->m_label;
-		double x=0,y=0;
+		printf("Node name is: %s\n", label.c_str() );		
+		double x=0.0;
+		double y=0.0;
 		GetNodeLocation(label,x,y);
 		list.append(format("%s %f %f#",label.c_str(),x,y));
 	}
@@ -447,26 +451,42 @@ bool CAHGraph::SetNodeLocation(string node_label,double x,double y)
 
 /** Get location (x,y) of exisitng node */
 bool CAHGraph::GetNodeLocation(string node_label,double &x,double &y)
-{
+{	
 	CHMHMapNodePtr node;
 	node=grafo.getNodeByLabel(node_label,COMMON_TOPOLOG_HYP);
 	if (node)
 	{
-	for (CMHPropertiesValuesList::const_iterator ann = node->m_annotations.begin(); ann != node->m_annotations.end(); ++ann)
-	{
+		printf("[WolrdModel] Requested location of node: %s. Searching annotations...\n",node->m_label.c_str());
+		for (CMHPropertiesValuesList::const_iterator ann = node->m_annotations.begin(); ann != node->m_annotations.end(); ++ann)
+		{
+			printf("[WolrdModel] Annotation value is present = %s\n",ann->value.present() ? "true" : "false");			
 			ASSERT_(ann->value.present())
-			string  str;
+
+			string  str;		
+
 			if (IS_CLASS(ann->value,CPoint2D))
 			{
+				printf("[WolrdModel] IS CLASS\n");
 				CPoint2DPtr o = CPoint2DPtr(ann->value);
-				o->asString(str);
-				x=o->x();
-				y=o->y();
+				//o->asString(str);
+				x = o->x();
+				y = o->y();
+				printf("[WolrdModel] Requested location of node: %s = [%.3f %.3f]\n",node_label.c_str(),x,y);
+			}			
+			else			
+			{
+				printf("[WolrdModel] Error - Incorrect ClassType.\n");
+				//cout << "Class type is: ";
+				//printf("%s\n",ann->value->GetRuntimeClass()->className);
 			}
+		}
+		return true;
 	}
-	return true;
+	else
+	{
+		printf("[WolrdModel] Error - Node not found or Node location not available.\n");
+		return false;
 	}
-	else return false;
 }
 
 
