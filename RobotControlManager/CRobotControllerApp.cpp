@@ -154,7 +154,7 @@ bool CRobotControllerApp::Iterate()
 				// Display value
 				if( mrpt::system::timeDifference(last_bettery_display_time,mrpt::system::now())>0.0 )
 				{
-					cout << "[Robot_Control_Manager]: Battery voltage is: " << battery_obs->voltageMainRobotBattery << endl;
+					//cout << "[Robot_Control_Manager]: Battery voltage is: " << battery_obs->voltageMainRobotBattery << endl;
 					last_bettery_display_time =  mrpt::system::now();
 				}
 
@@ -162,7 +162,7 @@ bool CRobotControllerApp::Iterate()
 				// Check if low battery
 				if( Is_Charging==0.0 && !going_to_docking && check_battery_status )
 				{
-					cout << "Checkign battery lvls" << endl;
+					cout << "Checking battery lvls" << endl;
 					if( battery_obs->voltageMainRobotBattery<=battery_threshold_recharge )
 					{
 						// Take Control
@@ -187,8 +187,7 @@ bool CRobotControllerApp::Iterate()
 							//m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 505 MOVE Docking");
 							//Wait till arrive to Docking
 							//Activate Docking module
-							//! @moos_publish PARKING Activates/Desactivates de Autodocking assistant
-							m_Comms.Notify("ROBOT_CONTROL_MODE", 2.0);
+							//! @moos_publish PARKING Activates/Desactivates de Autodocking assistant							
 							m_Comms.Notify("PARKING", 1.0);
 						}
 						else
@@ -300,7 +299,10 @@ bool CRobotControllerApp::DoRegistrations()
 	AddMOOSVariable( "BATTERY_V", "BATTERY_V", "BATTERY_V", 0);
 
 	//! @moos_subscribe SHUTDOWN
-	AddMOOSVariable( "SHUTDOWN", "SHUTDOWN", "SHUTDOWN", 0);	
+	AddMOOSVariable( "SHUTDOWN", "SHUTDOWN", "SHUTDOWN", 0);
+
+	//! @moos_subscribe PARKING
+	AddMOOSVariable( "PARKING", "PARKING", "PARKING", 0);
 
     RegisterMOOSVariables();
     return true;
@@ -419,6 +421,24 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				going_to_docking = false; //Already there
 		}
 		
+
+		if( MOOSStrCmp(m.GetKey(),"PARKING") )
+		{
+			//Someone requested to de/activate the Autodocking assistant
+			double parking_status = m.GetDouble();
+			if (parking_status == 1.0)
+			{
+				printf("[Robot_Control_Manager]: Request to activate Autodocking assistant!\n");
+				Robot_control_mode = 2;
+				m_Comms.Notify("ROBOT_CONTROL_MODE", Robot_control_mode);
+			}
+			else
+			{
+				printf("[Robot_Control_Manager]: Request to deactivate Autodocking assistant!\n");
+				Robot_control_mode = 0;
+				m_Comms.Notify("ROBOT_CONTROL_MODE", Robot_control_mode);
+			}			
+		}
 
 
 		if( (MOOSStrCmp(m.GetKey(),"SHUTDOWN")) && (MOOSStrCmp(m.GetString(),"true")) )
