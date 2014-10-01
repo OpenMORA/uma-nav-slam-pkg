@@ -897,9 +897,10 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 
 				if (solved)
 				{
+					//Activate AutoDocking assistant
 					action.clear();
-					action.push_back("PUBLISH");
-					action.push_back("PARKING 1");
+					action.push_back("PUBLISHF");
+					action.push_back("PARKING 1.0");
 					plan.push_back(action);
 					
 					action.clear();
@@ -911,7 +912,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 					else
 					{
 						action.push_back("WAIT_FOR_SIGNAL");
-						action.push_back("Complete_Recharge");
+						action.push_back("RECHARGE_COMPLETED");
 					}					
 					plan.push_back(action);
 				}
@@ -935,7 +936,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 					action.clear();
 					action.push_back("LOOK_AT");
 					action.push_back(param[0]);
-					plan.push_back(action);				
+					plan.push_back(action);
 				}
 				else 
 				{
@@ -960,6 +961,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 	{
 		if (command=="UNDOCK")
 		{
+			/*
 			action.clear();
 			action.push_back("PUBLISH");
 			action.push_back("PARKING 0");
@@ -969,6 +971,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 			action.push_back("PUBLISH");
 			action.push_back("ENABLE_MOTORS 1");
 			plan.push_back(action);
+			*/
 
 			action.clear();
 			action.push_back("PUBLISHF");
@@ -1047,6 +1050,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 			solved=false;
 		}
 	}//end Commands
+
 
 
 	// If task command found, execute the corresponding actions in the "plan"
@@ -1157,6 +1161,10 @@ bool HPWA::PathSearch(char *dest, tabla &plan, bool verbose, bool execute)
 	else
 	{
 		solved = true;
+		// Publish the "node" to move to (to inform the user via MQTT/Status)
+		//! @moos_publish TOPOLOGICAL_DESTINY Name of the node where the reactive navigation has been planned.
+		m_Comms.Notify("TOPOLOGICAL_DESTINY",dest);
+
 		//Generate sequence of actions, to run the path
 		for (size_t i=0;i<tok.size();i+=4)
 		{

@@ -100,6 +100,12 @@ bool CRandomNavigatorApp::DoRegistrations()
 	//! @moos_subscribe PLAN_FINISHED
 	AddMOOSVariable( "PLAN_FINISHED", "PLAN_FINISHED", "PLAN_FINISHED", 0 );
 
+	//! @moos_subscribe GRAPH
+	AddMOOSVariable( "GRAPH", "GRAPH", "GRAPH", 0 );
+
+	//! @moos_subscribe ROBOT_TOPOLOGICAL_PLACE
+	AddMOOSVariable( "ROBOT_TOPOLOGICAL_PLACE", "ROBOT_TOPOLOGICAL_PLACE", "ROBOT_TOPOLOGICAL_PLACE", 0 );	
+
 	RegisterMOOSVariables();
 	return true;
 }
@@ -128,23 +134,26 @@ bool CRandomNavigatorApp::OnNewMail(MOOSMSG_LIST &NewMail)
 					//        Each node is separated by #.
 					//        node_name node_posx node_posy
 					CMOOSVariable *GRAPH = GetMOOSVar("GRAPH");
-					if( GRAPH && GRAPH->IsFresh() )
+					if( GRAPH )
 					{
 						std::deque<std::string> lista;
 						mrpt::system::tokenize(GRAPH->GetStringVal(),"&",lista);
 						if( lista.size() == 2)
 						{
 							std::deque<std::string> lista_nodes;
-							mrpt::system::tokenize(lista[0],"#",lista);
+							mrpt::system::tokenize(lista[0],"#",lista_nodes);
 
 							//Fill list of node names
 							for( std::deque<std::string>::iterator it=lista_nodes.begin(); it!=lista_nodes.end(); it++ )
 							{
 								std::deque<std::string> node_params;
 								mrpt::system::tokenize(it->c_str()," ",node_params);
-								node_list.push_back(node_params[0]);	//Keep only the node names
+								if( node_params[0]!= "Robot")
+									node_list.push_back(node_params[0]);	//Keep only the node names (except node Robot)
 							}
 
+							//
+							printf("[RandomNavigator]: Number of nodes detected is %u\n",node_list.size());
 							active = true;
 							Request_Random_Navigation();
 						}
@@ -162,13 +171,19 @@ bool CRandomNavigatorApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				}
 				else
 				{
-					//Nothing to do, already active!!
+					cout << "[RandomNavigator]: Module already Active. Nothing to be done." << endl;
 				}			
 			}
 			//Disable?
 			else if( i->GetDouble() == 0.0 )
 			{
 				cout << "[RandomNavigator]: Stopping Random Navigations." << endl;
+				active = false;
+			}
+			//Temporarily Disable?
+			else if( i->GetDouble() == 2.0 )
+			{
+				cout << "[RandomNavigator]: Stopping Random Navigations Temporarily." << endl;
 				active = false;
 			}
 			else
@@ -192,6 +207,7 @@ bool CRandomNavigatorApp::OnNewMail(MOOSMSG_LIST &NewMail)
 					{
 						//current navigation eneded, request a new navigation
 						Request_Random_Navigation();
+						counter++;
 					}
 				}
 				else
@@ -218,21 +234,46 @@ bool CRandomNavigatorApp::OnNewMail(MOOSMSG_LIST &NewMail)
 void CRandomNavigatorApp::Request_Random_Navigation()
 {
 	//Select a node to navigate to from list of active nodes.
-	mrpt::random::randomGenerator.randomize();
-	size_t selected = (size_t) floor( mrpt::random::randomGenerator.drawUniform(0,node_list.size()) );
-	if( verbose ) 
-		cout << "Selected node is: " << selected << " from a total of " << node_list.size() << " nodes." << endl;
-
-	if( (selected>=0) && (selected<node_list.size()) ) 
-	{
-		//Request a Reactive navigation to such node
-		std::string selected_node_label = node_list[selected];
-		//! @moos_publish NEW_TASK Launch a new task in the Agenda Module
-		//  format: NEW_TASK UserID UserTaskID Command Arguments
-		m_Comms.Notify("NEW_TASK", format("RANDOM_NAVIGATOR %i MOVE %s",counter,selected_node_label) );
-		if( verbose )
-			cout << "NEW_TASK: RANDOM_NAVIGATOR " << counter << " MOVE " << selected_node_label << endl;
-	}
+	bool found = false;
+	std::string	current_node;
+	//Avoid selecting the current topological place
+	CMOOSVariable * pVar = GetMOOSVar("ROBOT_TOPOLOGICAL_PLACE");
+	if(pVar)
+		current_node = pVar->GetStringVal();
 	else
-		cout << "[RandomNavigator]: Error in the Random Selection!. Nothing Done" << endl;
+		current_node = "";
+
+	while (!found)
+	{
+		//Get random node
+		mrpt::random::randomGenerator.randomize();
+		size_t selected = (size_t) floor( mrpt::random::randomGenerator.drawUniform(0,node_list.size()) );
+
+		if( (selected>=0) && (selected<node_list.size()) )
+		{
+			//Check its not the current node
+			if (node_list[selected].c_str() != current_node)
+			{
+				found = true;
+				if( verbose ) 
+					cout << "Selected node is: " << selected << " from a total of " << node_list.size() << " nodes." << endl;
+
+				//Request a Reactive navigation to such node
+				std::string selected_node_label = node_list[selected];
+				printf("[RandomNavigator]: Navigating to node: %s\n", selected_node_label.c_str() );
+
+				//! @moos_publish NEW_TASK Launch a new task in the Agenda Module
+				//  format: NEW_TASK UserID UserTaskID Command Arguments
+				m_Comms.Notify("NEW_TASK", format("RANDOM_NAVIGATOR %u MOVE %s",counter,selected_node_label.c_str()) );
+				if( verbose )
+					cout << "NEW_TASK: RANDOM_NAVIGATOR " << counter << " MOVE " << selected_node_label << endl;
+			}
+		}
+		else
+		{
+			cout << "[RandomNavigator]: Error in the Random Selection!. Disabling RandomNavigator!" << endl;
+			//! @moos_publish RANDOM_NAVIGATOR
+			m_Comms.Notify("RANDOM_NAVIGATOR", 0.0);
+		}
+	}
 }
