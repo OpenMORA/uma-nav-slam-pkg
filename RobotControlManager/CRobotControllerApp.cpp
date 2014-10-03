@@ -81,13 +81,15 @@ bool CRobotControllerApp::OnStartUp()
 		if( MOOSStrCmp(working_mode,"onlyOpenMORA") )
 		{
 			//Start robot in autonomous mode (0 = Manual=Pilot, 2=Autonomous=OpenMORA)			
-			Robot_control_mode = 2;			
+			Robot_control_mode = 2;
+			printf("[RobotController]: Initial Mode: AUTONOMOUS.\n");
 		}
 		else
 		{
 			//Allow changing from Pilot to OpenMORA as requested (0 = Manual=Pilot, 2=Autonomous=OpenMORA)
 			//By default, start in Manual Mode 
 			Robot_control_mode = 0;
+			printf("[RobotController]: Initial Mode: MANUAL.\n");
 		}
 		//! @moos_publish ROBOT_CONTROL_MODE The robot working mode: 0=Manual=Pilot, 2=Autonomous=OpenMORA		
 		m_Comms.Notify("ROBOT_CONTROL_MODE", Robot_control_mode);
@@ -199,12 +201,12 @@ bool CRobotControllerApp::Iterate()
 							cout << "                         Returning to Docking station." << endl;
 							cout << "******************************************************" << endl;
 							//! @moos_publish NEW_TASK Request a new task to the Agenda.
-							m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 1 SAY BATTERY voltage too low!!!\n Returning to Docking station.");
+							m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 1 SAY Nivel de batería muy bajo!!!\n Regresando a la estación de carga!.");
 							//! @moos_publish ERROR_MSG A string containing the description of an Error.
 							m_Comms.Notify("ERROR_MSG","[Robot_Control_Manager]: BATTERY voltage too low!!!\n Returning to Docking station.");
 
 							//Command the robot to recharge its batteries
-							GoToRecharge();							
+							GoToRecharge();
 						}
 						//else
 						//	 cout << "tdif = "<< mrpt::system::timeDifference(last_bettery_warning_time,mrpt::system::now()) << endl;
@@ -220,7 +222,7 @@ bool CRobotControllerApp::Iterate()
 							cout << "                         Please proceed to recharge station."			<< endl;
 							cout << "******************************************************************"	<< endl;
 							//! @moos_publish NEW_TASK Request a new task to the Agenda.
-							m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 1 SAY Warning. Battery is getting low. Please take me to the docking station.");
+							m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 1 SAY ATENCIÓN. Nivel de batería bajo. Por favor, regresa a la estación de carga.");
 							//! @moos_publish ERROR_MSG A string containing the description of an Error.
 							m_Comms.Notify("ERROR_MSG","[Robot_Control_Manager]: WARNING battery voltage is getting low!!!\n Please proceed to recharge station.");
 							last_bettery_warning_time =  mrpt::system::now();
@@ -690,7 +692,7 @@ void CRobotControllerApp::SetAutonomousMode()
 
 void CRobotControllerApp::GoToRecharge()
 {
-	if (going_to_docking = false)
+	if (going_to_docking == false)
 	{
 		printf("[RobotController]: \n\nRequested GoToRecharge\n\n\n");
 		// 1. CANCEL ALL current tasks and movements of the robot.
