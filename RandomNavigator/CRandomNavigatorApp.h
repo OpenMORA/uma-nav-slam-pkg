@@ -54,7 +54,7 @@ protected:
 	void Request_Random_Navigation();
 
 	// DATA. Your local variables here...
-	bool active,verbose;
+	bool active,verbose,target_only_labeled_nodes;
 	std::deque<std::string> node_list;			//list containing the node names of the topology
 	size_t counter;
 };

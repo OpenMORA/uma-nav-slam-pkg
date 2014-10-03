@@ -57,7 +57,10 @@ CRandomNavigatorApp::~CRandomNavigatorApp()
 bool CRandomNavigatorApp::OnStartUp()
 {
 	// Read parameters (if any) from the mission configuration file.
-	
+	//! @moos_param target_only_labeled_nodes Indicates if all nodes are legible as targets, or only those labeled (!=NODE...)
+	std::string section = "";
+	target_only_labeled_nodes = m_ini.read_bool(section,"target_only_labeled_nodes",true,false);	
+
 	active = false;
 	verbose = true;
 	counter = 0;
@@ -148,8 +151,16 @@ bool CRandomNavigatorApp::OnNewMail(MOOSMSG_LIST &NewMail)
 							{
 								std::deque<std::string> node_params;
 								mrpt::system::tokenize(it->c_str()," ",node_params);
-								if( node_params[0]!= "Robot")
-									node_list.push_back(node_params[0]);	//Keep only the node names (except node Robot)
+								if( (node_params[0]!= "Robot") && (node_params[0]!= "Docking") )
+								{
+									if (target_only_labeled_nodes)
+									{
+										if( node_params[0].compare(0,4,"NODE") != 0)								
+											node_list.push_back(node_params[0]);	//Keep only the node names (except node Robot)
+									}
+									else
+										node_list.push_back(node_params[0]);	//Keep only the node names (except node Robot)
+								}
 							}
 
 							//
