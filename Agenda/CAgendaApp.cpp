@@ -73,6 +73,11 @@ bool CAgendaApp::OnStartUp()
 	// There is also a MRPT-like object (this->m_ini) that is a wrapper
 	// to read from the module config block of the current MOOS mission file.
 	// m_ini.read_int(...);
+
+	//! @moos_param Save_logfile Wheter or not to save a logFile with debug information
+	Save_logfile = m_ini.read_bool("","Save_logfile", false, false);
+	tm.set_SaveLogfile(Save_logfile);
+	//Tell the TaskManager about the logfile.
 	return DoRegistrations();
 }
 

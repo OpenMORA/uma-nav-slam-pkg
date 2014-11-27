@@ -29,11 +29,12 @@
 #ifndef CAgendaApp_H
 #define CAgendaApp_H
 
-#include <MOOS/libMOOS/App/MOOSApp.h>
+//#include <MOOS/libMOOS/App/MOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include "TaskManager.hpp"
 
 
-class CAgendaApp : public CMOOSApp
+class CAgendaApp : public COpenMORAApp
 {
 public:
     CAgendaApp();
@@ -59,7 +60,7 @@ protected:
 
 	std::string newtask;
 	std::string nexttask;
-
+	bool Save_logfile;
 
 };
 #endif

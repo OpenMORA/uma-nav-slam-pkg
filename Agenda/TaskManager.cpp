@@ -44,18 +44,8 @@ TaskManager::TaskManager()
 	num_users=0;
 	releasedtickets.clear();
 
-	//Generate log file
-	sprintf(fileLog,"agenda_log.txt");
-	log=fopen(fileLog,"w+");
-	fprintf(log,"-------------------------------------------------\n");
-	TTimeStamp stamp= getCurrentTime();
-	std::string date= dateTimeToString(stamp);
-	fprintf(log,"------Starting Agenda at %s----\n",date.c_str());
-	fprintf(log,"-------------------------------------------------\n");
-	fclose(log);
-
+	Save_logfile = false;
 	taskid=0;
-
 }
 
 void TaskManager::GetUserLicense(int &t)
@@ -306,17 +296,16 @@ void TaskManager::FlushAgenda(int prio)
 
 void TaskManager::FPrintTask(tasktype task,bool added)
 {
-
-	log=fopen(fileLog,"a+");
-
-	if (added) fprintf(log,"Added a New Task:\t");
-	else fprintf(log,"Remove a Task from the Agenda:\t");
-
-//	fprintf(log,"[%f]\t %s\t %s\t %s\t \n",mrpt::system::timestampTotime_t(task.timestamp),     task.userid.c_str(),     task.command.c_str(),    task.task.c_str());
-
-
-	fclose(log);
-
+	if( Save_logfile )
+	{
+		log = fopen(fileLog,"a+");
+		if (added) 
+			fprintf(log,"Added a New Task:\t");
+		else 
+			fprintf(log,"Remove a Task from the Agenda:\t");
+		//fprintf(log,"[%f]\t %s\t %s\t %s\t \n",mrpt::system::timestampTotime_t(task.timestamp),     task.userid.c_str(),     task.command.c_str(),    task.task.c_str());
+		fclose(log);
+	}
 }
 
 
@@ -374,4 +363,24 @@ void TaskManager::AgendaStatus(std::string &cad)
 	printf("%s",aux.c_str());
 	cad=aux;
 
+}
+
+
+/** Indicates wheter or not save a log file */
+void TaskManager::set_SaveLogfile(bool logfile_option)
+{
+	Save_logfile = logfile_option;
+
+	//Generate log file
+	if( Save_logfile)
+	{
+		sprintf(fileLog,"agenda_log.txt");
+		log=fopen(fileLog,"w+");
+		fprintf(log,"-------------------------------------------------\n");
+		TTimeStamp stamp= getCurrentTime();
+		std::string date= dateTimeToString(stamp);
+		fprintf(log,"------Starting Agenda at %s----\n",date.c_str());
+		fprintf(log,"-------------------------------------------------\n");
+		fclose(log);
+	}
 }

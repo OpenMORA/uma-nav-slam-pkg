@@ -91,16 +91,15 @@ class TaskManager
 		void FPrintTask(tasktype task,bool added=true); //if added (default) a note is include in the log to indicate
 		//that the task was added into the agenda.
 
-
 		///////Geting and releasing user id's
 		void GetUserLicense(int &t);
 		void ReleaseUserLicense(int t);
-
 
 		void SendEvent();
 
 		void AgendaStatus(std::string &cad);
 
+		void set_SaveLogfile(bool logfile_option);
 
 	private:
 
@@ -113,7 +112,8 @@ class TaskManager
 	 FILE *log;
 	 char fileLog[80];
 	 long taskid;	//unique identifier for tasks
-
+	 bool Save_logfile;
+	 
 	 mrpt::synch::CCriticalSection  sem;
 
 };
