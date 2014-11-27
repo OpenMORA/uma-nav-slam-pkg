@@ -56,6 +56,7 @@ protected:
 	void CRobotControllerApp::SetManualMode();
 	void CRobotControllerApp::SetAutonomousMode();
 	void CRobotControllerApp::GoToRecharge();
+	void CRobotControllerApp::CheckBattery(double battery_v);
 
 
 	//Data
@@ -66,6 +67,7 @@ protected:
 	bool use_client_alive_ack;							// Indicates wheter this module should check the status of the ACK from Client (Ture/false)
 	bool check_mqtt_alive;								// Indicates wheter this module should check the status of MQTT (Ture/false)
 	bool check_battery_status;							// Indicates wheter this module should check the status of Battery (Ture/false)
+	bool battery_base;									// Indicates true=Monitor battery from the robot base, false=monitor external battery (see BatteryManager module)
 	float battery_threshold_warning, battery_threshold_recharge, battery_threshold_charged; // Battery lvl (Volts) that will cause the robot to go recharge or generate a warning
 	double max_client_ack_interval;						// Max number of seconds between ACK from the Client to set it is alive
 	bool verbose;
