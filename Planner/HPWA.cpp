@@ -897,27 +897,29 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 
 				if (solved)
 				{
-					//Activate AutoDocking assistant
+					//Once in the Docking node, activate AutoDocking assistant
 					action.clear();
 					action.push_back("PUBLISHF");
 					action.push_back("PARKING 1.0");
 					plan.push_back(action);
 					
+					//Recharge for a given time?
 					action.clear();
-					if (atof(param[0].c_str())>0)
+					if( atof(param[0].c_str())>0 )
 					{
 						action.push_back("WAIT_TIME");
 						action.push_back(param[0]);
+						plan.push_back(action);
 					}
 					else
 					{
-						action.push_back("WAIT_FOR_SIGNAL");
-						action.push_back("RECHARGE_COMPLETED");
+						//action.push_back("WAIT_FOR_SIGNAL");
+						//action.push_back("RECHARGE_COMPLETED");
+						//plan.push_back(action);
 					}					
-					plan.push_back(action);
 				}
 				else
-					printf("[HPWA:SolveTask:GO_TO_RECHARGE]Error: No path found to 'Docking' in the topology.\n");
+					printf("[HPWA:SolveTask]: GO_TO_RECHARGE ERORR - No path found to 'Docking' in the topology.\n");
 			}
 
 		//MOVE(node_label)
@@ -980,7 +982,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 
 			action.clear();
 			action.push_back("WAIT_TIME");
-			action.push_back("0.07");
+			action.push_back("0.5");
 			plan.push_back(action);
 				
 			action.clear();
@@ -1053,6 +1055,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 
 
 
+	//-----------------------------------------------------------------------
 	// If task command found, execute the corresponding actions in the "plan"
 	//-----------------------------------------------------------------------
 	if(solved)
