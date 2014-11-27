@@ -120,9 +120,8 @@ void CAHGraphApp::UpdateTopologicalPlace()
 	std::string sNodes;
 	graph.GetAllNodes(sNodes);
 	std::string delimiter = "#";
-
-	if (verbose)
-		cout << "\n Estimating current node from list: " << sNodes << endl;
+	if (verbose)		
+		cout << "\n [WorldModel]: Estimating current node from list: " << sNodes << endl;
 
 	size_t pos = 0;
 	std::string snode_i;
@@ -152,7 +151,7 @@ void CAHGraphApp::UpdateTopologicalPlace()
 			float distance = sqrt( square(c1) + square(c2) );
 				
 			if (verbose)
-				printf("Node: %s|%s|%s at d=%.2f\n",nodeName.c_str(),nodeX.c_str(),nodeY.c_str(),distance);
+				printf("[WorldModel]: Node: %s|%s|%s at d=%.2f\n",nodeName.c_str(),nodeX.c_str(),nodeY.c_str(),distance);
 
 			if ( (first_node) || (distance < min_distance) )
 			{
@@ -189,7 +188,7 @@ void CAHGraphApp::UpdateTopologicalPlace()
 		if (neighbors[0] != idtarget )
 		{
 			graph.DeleteOutcommingArcs(idrobot,"Location");
-			printf("Changing robot pose to %s\n",closest_node.c_str());
+			printf("[WorldModel]: Updating robot pose to %s\n",closest_node.c_str());
 			graph.AddArc(idrobot,idtarget,"robotpose","Location",id);
 			RefreshGraph();			
 		}
@@ -297,7 +296,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		{			
 			std::deque<std::string> lista;
 			mrpt::system::tokenize(i->GetString()," ",lista);
-			printf( "\n\nSearching a path to %s\n",lista.back().c_str());
+			printf( "\n\n[WorldModel]: Path requested to %s\n",lista.back().c_str());
 			size_t idtarget = graph.GetNodeId(lista.back());
 			size_t idrobot = graph.GetNodeId("Robot");
 
@@ -307,7 +306,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 
 			if (idtarget == (size_t)-1)		//Node not found, cannot get path to it
 			{
-				cout << "Node Not Found!" << endl;				
+				printf( "[WorldModel]: ERROR - Node %s NOTFOUND in topology\n",lista.back().c_str());				
 				//! @moos_publish PATH Sequence of nodes from "robot" to provided destiny in response to the "GET_PATH" var.
 				m_Comms.Notify("PATH", format("%s NOTFOUND",lista[0].c_str()));
 			}
@@ -317,7 +316,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				//avoid node "robot" in the search by getting its node location
 				std::vector<size_t> neighbors;
 				graph.GetNodeNeighbors(idrobot,"Location",neighbors);
-				printf("Searching a path from id:%u to id:%u\n",(unsigned int)neighbors[0],(unsigned int)idtarget);
+				printf("[WorldModel]: Searching a path from id:%u to id:%u\n",(unsigned int)neighbors[0],(unsigned int)idtarget);
 
 				//Search path between two nodes of the graph
 				std::string path;
@@ -325,32 +324,17 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 
 				if (path_found)
 				{
-					printf( "Path found!! - Publishing new PATH variable.");
+					printf("[WorldModel]: Path FOUND!\n");
 					//! @moos_publish PATH Sequence of nodes from "robot" to provided destiny in response to the "GET_PATH" var.
 					m_Comms.Notify("PATH", format("%s %s",lista[0].c_str(),path.c_str()));
 				}
 				else
 				{
-					MOOSTrace("No path found to node %u\n",idtarget);					
+					MOOSTrace("[WorldModel]: Path NOTFOUND\n");					
 					//! @moos_publish PATH Sequence of nodes from "robot" to provided destiny in response to the "GET_PATH" var.
 					m_Comms.Notify("PATH", format("%s NOTFOUND", lista[0].c_str()));
-				}
-					//// Trivial Path (n_start == n_end)
-					//if (size_t(neighbors[0]) == idtarget)
-					//{
-					//	//[deprecated]
-					//	//comand reactive navigation directly, and do not publish any PATH
-					//	//get node coordinates
-					//	printf( "Trivial Path found - Requesting Navigation to Target Point (x,y)\n");
-					//	double x,y;
-					//	bool res = graph.GetNodeLocation(lista.back(),x,y);
-					//	const string only_target = format("[%.03f %.03f]",x,y);
-
-					//	//! @moos_publish NAVIGATE_TARGET The position [x,y] to navigate to.
-					//	m_Comms.Notify("NAVIGATE_TARGET",only_target);
-					//}				
+				}								
 			}//end-if node found
-
 		}
 		
 
@@ -370,7 +354,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			if ( graph.ExistsNodeLabel(lista[1]) )
 			{
 				size_t idperson = graph.GetNodeId(lista[1]);
-				printf("Searching for %s (id: %d)\n",lista[1].c_str(),idperson);
+				printf("[WorldModel]: Searching for person %s (id: %d)\n",lista[1].c_str(),idperson);
 				std::vector<size_t> dest;
 				//Get list of neighbord nodes of tipe location
 				graph.GetNodeNeighbors(idperson,"Location",dest);		
@@ -390,11 +374,12 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			}
 			else			
 			{
-				cout << "[WorldModel: GET_PERSON_LOCATION]: EROR - Node label not found." << endl;
+				cout << "[WorldModel]: GET_PERSON_LOCATION EROR - Node label not found." << endl;
 				//! @moos_publish PERSON_LOCATION The result of finding a Person(node_label) in the Topological Graph
 				m_Comms.Notify("PERSON_LOCATION", format("%s NOTFOUND",lista[0].c_str()));
 			}
 		}
+
 
 		// GET_NODE_POSITION "petitionID node_label"
 		// Returns the location (x,y) of a node given its label
@@ -421,7 +406,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			}
 			else			
 			{
-				cout << "[WorldModel: GET_NODE_POSITION]EROR: Node label not found." << endl;				
+				cout << "[WorldModel]: GET_NODE_POSITION EROR - Node label not found." << endl;
 				//m_Comms.Notify("NODE_POSITION", format("%s %f %f notfound",lista[0].c_str(),x,y));
 				//!  @moos_publish NODE_POSITION  geometric position of a node in response to the "GET_NODE_POSITION" var.
 				m_Comms.Notify( "NODE_POSITION", format("%s NOTFOUND",lista[0].c_str()) );
@@ -441,19 +426,20 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			//Check that label doesn't exist in topology
 			if (!graph.ExistsNodeLabel(lista[0]))
 			{
-				cout << "Adding new node to Topology" << endl;
+				cout << "[WorldModel]: Adding new node to Topology" << endl;
 				size_t id;
 				graph.AddNode(lista[0],lista[1],id,atof(lista[2].c_str()),atof(lista[3].c_str()));
 				RefreshGraph();
 			}
 			else
 			{
-				cout << "EROR: Node label already exists" << endl;
+				cout << "[WorldModel]: EROR - Node label already exists" << endl;
 				//! @moos_publish ERROR_MSG A string containing the description of an Error.
 				m_Comms.Notify("ERROR_MSG","pWorldModel: Node label already exists. Node not Added.");
 			}
 		}
 		
+
 		// Add new arc to topology --> ADD_ARC label_nodeA label_nodeB type
 		if( (i->GetName()=="ADD_ARC") )
 		{
@@ -463,17 +449,20 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			//check that both nodes exists.
 			if (graph.ExistsNodeLabel(lista[0]) && graph.ExistsNodeLabel(lista[1]) )
 			{
+				cout << "[WorldModel]: Adding new arc to Topology" << endl;
 				size_t id;
 				// Add arc as Bidirectional: a->b + b->a
 				graph.AddArcbyLabel(lista[0].c_str(),lista[1].c_str(),"",lista[2].c_str(), true, id);
 				RefreshGraph();
 			}
 			else
-				cout << "EROR: Nodes not found. Arc not created " << endl;
+			{
+				cout << "[WorldModel]: EROR - Nodes not found. Arc not created. " << endl;
 				//! @moos_publish ERROR_MSG A string containing the description of an Error.
 				m_Comms.Notify("ERROR_MSG","pWorldModel: Nodes not found. Arc not created.");
-
+			}
 		}
+
 
 		// Change location of existing node --> MOVE_NODE label x y
 		if( (i->GetName()=="MOVE_NODE") )
@@ -484,12 +473,13 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			//check that node exists.
 			if ( graph.ExistsNodeLabel(lista[0]) )
 			{
+				printf("[WorldModel]: MOVE_NODE - Node %s moved successfully\n",lista[0].c_str());
 				graph.SetNodeLocation(lista[0],atof(lista[1].c_str()),atof(lista[2].c_str()));
 				RefreshGraph();
 			}
 			else
 			{
-				cout << "EROR: Node not found. Position not changed. " << endl;
+				cout << "[WorldModel]: MOVE_NODE EROR - Node not found. Position not updated. " << endl;
 				//! @moos_publish ERROR_MSG A string containing the description of an Error.
 				m_Comms.Notify("ERROR_MSG","pWorldModel: Node not found. Position not changed.");
 			}
@@ -516,7 +506,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			
 			if (error)
 			{
-				cout << "EROR: Node label not found or new label already exists. Cannot Rename it." << endl;
+				cout << "[WorldModel]: EROR: Node label not found or new label already exists. Cannot Rename it." << endl;
 				//! @moos_publish ERROR_MSG A string containing the description of an Error.
 				m_Comms.Notify("ERROR_MSG","pWorldModel: Node label not changed because node not found or new_label already exists.");
 			}
@@ -546,11 +536,12 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 
 			if (error)
 			{
-				cout << "EROR: Problem found when deleting arcs between two given nodes. Nodes not found." << endl;
+				cout << "[WorldModel]: EROR - Problem found when deleting arcs between two given nodes. Nodes not found." << endl;
 				//! @moos_publish ERROR_MSG A string containing the description of an Error.
 				m_Comms.Notify("ERROR_MSG","pWorldModel: Problem found when deleting arcs between two given nodes. Nodes not found.");
 			}
 		}
+
 
 		// Remove Node from topological graph: REMOVE_NODE nodeLabel
 		if( i->GetName()=="REMOVE_NODE" )
@@ -559,7 +550,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				RefreshGraph();
 			else
 			{
-				cout << "EROR: Problem deleting Node. Node may not exists." << endl;
+				cout << "[WorldModel]: EROR - Problem deleting Node. Node may not exists." << endl;
 				//! @moos_publish ERROR_MSG A string containing the description of an Error.
 				m_Comms.Notify("ERROR_MSG","pWorldModel: Problem deleting Node. Node may not exists.");
 			}
@@ -569,7 +560,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		// Load Graph from file: LOAD_GRAPH file
 		if( i->GetName()=="LOAD_GRAPH" )
 		{
-			printf("Loading Topology graph from: [%s]\n",i->GetString().c_str());
+			printf("[WorldModel]: Loading Topology graph from: [%s]\n",i->GetString().c_str());
 			graph.LoadGraph(i->GetString());
 			RefreshGraph();
 		}
@@ -577,7 +568,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		// Save Graph to file: SAVE_GRAPH file
 		if( i->GetName()=="SAVE_GRAPH" )
 		{
-			printf("Saving Topology graph to: [%s]\n",i->GetString().c_str());
+			printf("[WorldModel]: Saving Topology graph to: [%s]\n",i->GetString().c_str());
 			graph.SaveGraph(i->GetString());
 			RefreshGraph();
 		}
