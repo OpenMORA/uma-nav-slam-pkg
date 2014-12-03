@@ -365,15 +365,15 @@ bool CAHGraph::FindPath(size_t idstart,size_t idend,std::vector<size_t> &nodes_i
 {
 
 	mrpt::hmtslam::TArcList path;	
-	//cheack that nodes are not isolated
+	//check that nodes are not isolated
 	std::vector<size_t> neighborsStart, neighborsEnd;
 	GetNodeNeighbors(idstart,"Navegability",neighborsStart);
 	GetNodeNeighbors(idend,"Navegability",neighborsEnd);
 	if( neighborsStart.size()>=1 && neighborsEnd.size()>=1 )
 	{
-		cout << "Generating path between nodes " << idstart << " and " << idend << endl;
+		cout << "[CAHGraph::FindPath]: Generating path between nodes " << idstart << " and " << idend << endl;
 		grafo.findPathBetweenNodes(idstart,idend,COMMON_TOPOLOG_HYP,path,true);		
-		printf("Path length %u\n",(unsigned int)path.size());
+		printf("[CAHGraph::FindPath]: Path length %u\n",(unsigned int)path.size());
 		TArcList::const_iterator it;
 		for (it=path.begin();it!=path.end();++it)
 		{
@@ -386,7 +386,7 @@ bool CAHGraph::FindPath(size_t idstart,size_t idend,std::vector<size_t> &nodes_i
 	}
 	else
 	{
-		cout << "[CAHGraph::FindPath] Node origin or destiny Isolated. Path not found" << endl;
+		cout << "[CAHGraph::FindPath]: Node origin or destiny Isolated. Path not found" << endl;
 		return false;
 	}
 
@@ -415,7 +415,9 @@ bool CAHGraph::FindPath(size_t idstart, size_t idend, std::string &path)
 	if (!FindPath(idstart,idend,nodes_id)) 
 		return false;
 
-	for (size_t i=0;i<nodes_id.size();i++)
+	//Build the PATH string
+	//JGMonroy -> Avoid the first node!! to improve navigation
+	for( size_t i=1;i<nodes_id.size();i++ )
 	{
 		GetNodeLabel(nodes_id[i],label);
 		GetNodeLocation(label,x,y);
