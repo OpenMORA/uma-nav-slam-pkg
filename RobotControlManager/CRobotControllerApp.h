@@ -71,7 +71,7 @@ protected:
 	float battery_threshold_warning, battery_threshold_recharge, battery_threshold_charged; // Battery lvl (Volts) that will cause the robot to go recharge or generate a warning
 	double max_client_ack_interval;						// Max number of seconds between ACK from the Client to set it is alive
 	bool verbose;
-	std::string working_mode, mqtt_status;
+	std::string working_mode, mqtt_status, client_connected;
 	float Is_Charging;
 	bool going_to_docking;
 	uint64_t initial_collaborative_delay;

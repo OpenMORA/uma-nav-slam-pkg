@@ -122,7 +122,8 @@ bool CRobotControllerApp::OnStartUp()
 		//! @moos_param battery_threshold_charged Battery level corresponding to a complete charge
 		battery_threshold_charged = m_ini.read_float(section,"battery_threshold_charged",29.0,false);
 
-		mqtt_status = "";
+		mqtt_status = "OFFLINE";
+		client_connected = "NONE";
 		Is_Charging = 1.0;		//Start as charging (default behaviour)
 		last_bettery_display_time = mrpt::system::now();
 		last_bettery_warning_time = mrpt::system::now();
@@ -197,51 +198,26 @@ bool CRobotControllerApp::Iterate()
 
 
 		//----------------------------
-		// Check MQTT connection
-		//----------------------------			
-		if( use_client_alive_ack && Is_Charging==0.0 )
-		{			
-			CMOOSVariable * pVarMQTT = GetMOOSVar( "MQTT_CONNECT_STATUS" );
-			if( pVarMQTT )
+		// Check Client connection
+		//----------------------------		
+		if( mrpt::system::timeDifference(last_mqtt_ack_time,mrpt::system::now()) > max_client_ack_interval )
+		{
+			//Connection to client lost, close logger session
+			if( client_connected != "NONE" )
 			{
-				//Display MQTT status
-				if( !MOOSStrCmp(mqtt_status,pVarMQTT->GetStringVal()) )
-				{
-					mqtt_status = pVarMQTT->GetStringVal();
-					cout << "[Robot_Control_Manager]: MQTT status changed to: " << pVarMQTT->GetStringVal() << endl;
-				}
-				
-				//Problem dectected??
-				if( mrpt::system::timeDifference(last_mqtt_ack_time,mrpt::system::now()) > max_client_ack_interval )
-				{
-					// SECURITY - Stop robot and return to Manual Mode (User control only)
-					cout << "[Robot_Control_Manager]: ERROR - MQTT ACK timeout! " << endl;
-					//! @moos_publish CANCEL_NAVIGATION
-					m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
-
-					//if( Robot_control_mode == 2 )
-					//{	
-					//	//Finish current navigation
-					//	//Do nothing, just wait navigation to end --> control_mode = 0
-					//}	
-					//else
-					//{
-					//	//Problem detected! Communications not working or client disconnected
-					//	if ( MOOSStrCmp(pVarMQTT->GetStringVal(),"OFFLINE"))
-					//		cout << "[Robot_Control_Manager]: Error detected in the communications with MQTT.\n Returning to Docking station." << endl;
-					//	else						
-					//		cout << "[Robot_Control_Manager]: Error detected in the communications with Client.\n ACK not received.\n Returning to Docking station." << endl;
-
-					//	//! @moos_publish PNAVIGATORREACTIVEPTG3D_CMD Request the reactive3D to stop current navigation plan
-					//	m_Comms.Notify("PNAVIGATORREACTIVEPTG3D_CMD", "CANCEL");
-					//	//Command a Navigation to Docking node.
-					//	//! @moos_publish GET_PATH Request a navigation to especified node
-					//	m_Comms.Notify("GET_PATH", "Docking" );
-					//}
-				}
+				printf("[RobotController]: Client ACK timeout!. Clossing session\n.");
+				//! @moos_publish LOGGER_STOP Stops the current session in the SessionLogger module
+				m_Comms.Notify("LOGGER_STOP","1");
+				client_connected = "NONE";
 			}
-			else
-				cout << "[Robot_Control_Manager]: ERROR - MQTT status UNKNOWN" << endl;			
+
+			if( use_client_alive_ack && Is_Charging==0 )
+			{
+				// SECURITY - Stop robot and return to Manual Mode (User control only)
+				cout << "[Robot_Control_Manager]: ERROR - MQTT Client ACK timeout! " << endl;
+				//! @moos_publish CANCEL_NAVIGATION
+				m_Comms.Notify("CANCEL_NAVIGATION", "RobotController:MQTT lost");
+			}			
 		}
 
 		return true;
@@ -275,8 +251,8 @@ bool CRobotControllerApp::DoRegistrations()
 	//! @moos_subscribe CANCEL_NAVIGATION
     AddMOOSVariable( "CANCEL_NAVIGATION", "CANCEL_NAVIGATION", "CANCEL_NAVIGATION", 0);
 	
-	//! @moos_subscribe PILOT_MQTT_ACK
-    AddMOOSVariable( "PILOT_MQTT_ACK", "PILOT_MQTT_ACK", "PILOT_MQTT_ACK", 0);
+	//! @moos_subscribe CLIENT_MQTT_ACK
+    AddMOOSVariable( "CLIENT_MQTT_ACK", "CLIENT_MQTT_ACK", "CLIENT_MQTT_ACK", 0);
 	
 	//! @moos_subscribe MQTT_CONNECT_STATUS
 	AddMOOSVariable( "MQTT_CONNECT_STATUS", "MQTT_CONNECT_STATUS", "MQTT_CONNECT_STATUS", 0);
@@ -390,9 +366,9 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			//Someone request to Cancel current Navigation!
 			//if( Robot_control_mode == 2 && !MOOSStrCmp(working_mode,"onlyOpenMORA") )
 			{
-				cout << endl << "[Robot_Control_Manager]: CANCELLING ALL TASKS AND STOPPING THE ROBOT!" << endl;
+				cout << endl << "[Robot_Control_Manager]: CANCEL_NAVIGATION - " << m.GetString() << endl;
 				//STOP THE ROBOT & Set Manual mode
-				//---------------------------------				
+				//---------------------------------
 				//! @moos_publish PNAVIGATORREACTIVEPTG3D_CMD Request the reactive3D to stop current navigation
 				m_Comms.Notify("PNAVIGATORREACTIVEPTG3D_CMD", "CANCEL");
 				//! @moos_publish CANCEL_IN_EXECUTION Cancel current Navigation Plans (Executor)
@@ -406,19 +382,38 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			}            
 		}
 
-
-		if( MOOSStrCmp(m.GetKey(),"PILOT_MQTT_ACK") )
-		{
-			//Update time of last ACK
-			last_mqtt_ack_time = mrpt::system::now();
-		}
 		
+		if( MOOSStrCmp(m.GetKey(),"MQTT_CONNECT_STATUS") )		
+		{
+			// MQTT status changed
+			if( !MOOSStrCmp(mqtt_status,m.GetString()) )
+			{
+				mqtt_status = m.GetString();
+				cout << "[RobotController]: MQTT status changed to: " << m.GetString() << endl;
+			}
+		}
+
+		
+		if( MOOSStrCmp(m.GetKey(),"CLIENT_MQTT_ACK") )
+		{
+			//Update time of last client ACK
+			last_mqtt_ack_time = mrpt::system::now();
+			if( client_connected == "NONE" )
+			{
+				client_connected = m.GetString();
+				printf("[RobotController]: Starting new session for Client: %s\n", client_connected.c_str());
+				//! @moos_publish LOGGER_START Start a new session in the SessionLogger Module with the provided username
+				m_Comms.Notify("LOGGER_START", client_connected.c_str());
+			}
+		}
+
+				
 
 		if( MOOSStrCmp(m.GetKey(),"BATTERY_IS_CHARGING") || MOOSStrCmp(m.GetKey(),"BATTERY_MANAGER_IS_CHARGING") )
 		{
 			//Update charging status
 			Is_Charging = m.GetDouble();
-			cout << "[Robot_Control_Manager]: Robot Charging status changed to: " << Is_Charging << endl;
+			cout << "[RobotController]: Robot Charging status changed to: " << Is_Charging << endl;
 			if( Is_Charging == 1.0 )
 				going_to_docking = false; //Already there
 		}
@@ -430,12 +425,12 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			double parking_status = m.GetDouble();
 			if (parking_status == 1.0)
 			{
-				printf("[Robot_Control_Manager]: STARTING Autodocking!\n");
+				//printf("[Robot_Control_Manager]: STARTING Autodocking!\n");
 				SetAutonomousMode();				
 			}
 			else
 			{
-				printf("[Robot_Control_Manager]: STOPPING Autodocking!\n");
+				//printf("[Robot_Control_Manager]: STOPPING Autodocking!\n");
 				SetManualMode();
 			}			
 		}
@@ -464,7 +459,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				m_Comms.Notify("MOTION_CMD_W",atof(setW.c_str()));
 			}
 			else
-				cout << "[Robot_Control_Manager] ERROR: Incorrect Motion Command" << endl;
+				cout << "[RobotController] ERROR: Incorrect Motion Command" << endl;
 		}
 
 		//COLLABORATIVE_REQUEST mod([0,1]) ang(deg) ttimestamp (ms)
@@ -487,7 +482,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 					{
 						mrpt::system::TTimeStamp ref = mrpt::system::now()/10000;	//Current time in ms
 						initial_collaborative_delay = ref - static_cast<unsigned __int64>(_atoi64(list.at(1).c_str())) ;
-						printf("[Robot_Control_Manager]: Collaborative control ACTIVATED.\n");
+						printf("[RobotController]: Collaborative control ACTIVATED.\n");
 					}
 					catch (std::exception &e) {	return MOOSFail( (string("**COLLABORATIVE START ERROR: ") + string(e.what())).c_str() ); }
 					catch (...)	{ printf("UNKNOWN COLLABORATIVE START ERROR.\n"); }
@@ -496,7 +491,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				{
 					//! @moos_publish COLLABORATIVE Indicates if collaborative control is requested by the user
 					m_Comms.Notify("COLLABORATIVE", 0.0);
-					printf("[Robot_Control_Manager]: Collaborative control DEACTIVATED.\n");
+					printf("[RobotController]: Collaborative control DEACTIVATED.\n");
 				}
 			}			
 			else if( list.size() == 3 )
@@ -560,7 +555,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 							m_Comms.Notify("NAVIGATE_TARGET",target);
 
 							//! @moos_publish CANCEL_NAVIGATION
-							m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
+							m_Comms.Notify("CANCEL_NAVIGATION", "RobotController-Collaborative");
 						}
 
 						//! @moos_publish MOTION_CMD_V Set robot linear speed
@@ -582,7 +577,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 							m_Comms.Notify("NAVIGATE_TARGET",target);
 
 							//! @moos_publish CANCEL_NAVIGATION
-							m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
+							m_Comms.Notify("CANCEL_NAVIGATION", "RobotController-Collaborative");
 						}
 
 						//! @moos_publish MOTION_CMD_V Set robot linear speed
@@ -751,10 +746,10 @@ void CRobotControllerApp::CheckBattery(double battery_v)
 					last_bettery_warning_time =  mrpt::system::now();
 
 					//BATTERY IS TOO LOW - EMERGENCY!
-					cout << "******************************************************" << endl;
+					cout << endl << "******************************************************" << endl;
 					cout << "[Robot_Control_Manager]: BATTERY voltage is too low!!!" << endl;
 					cout << "                         Returning to Docking station." << endl;
-					cout << "******************************************************" << endl;
+					cout << "******************************************************" << endl << endl;
 					//! @moos_publish NEW_TASK Request a new task to the Agenda.
 					m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 1 SAY Nivel de batería muy bajo!!!\n Regresando a la estación de carga!.");
 					//! @moos_publish ERROR_MSG A string containing the description of an Error.
@@ -769,10 +764,10 @@ void CRobotControllerApp::CheckBattery(double battery_v)
 				// Generate Warning for the user every minute
 				if( mrpt::system::timeDifference(last_bettery_warning_time,mrpt::system::now())>60.0 )
 				{
-					cout << "******************************************************************"	<< endl;
-					cout << "[Robot_Control_Manager]: WARNING battery voltage is getting low!!!"	<< endl;
-					cout << "                         Please proceed to recharge station."			<< endl;
-					cout << "******************************************************************"	<< endl;
+					//cout << "******************************************************************"	<< endl;
+					//cout << "[Robot_Control_Manager]: WARNING battery voltage is getting low!!!"	<< endl;
+					//cout << "                         Please proceed to recharge station."		<< endl;
+					//cout << "******************************************************************"	<< endl;
 					//! @moos_publish NEW_TASK Request a new task to the Agenda.
 					m_Comms.Notify("NEW_TASK", "ROBOT_CONTROLLER 1 SAY ATENCIÓN. Nivel de batería bajo. Por favor, regresa a la estación de carga.");
 					//! @moos_publish ERROR_MSG A string containing the description of an Error.
