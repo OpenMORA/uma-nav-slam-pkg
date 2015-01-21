@@ -3,11 +3,6 @@
 
 #include <mrpt/hmtslam/CHierarchicalMHMap.h>
 
-
-using namespace mrpt::utils;
-using namespace mrpt::hmtslam;
-using namespace std;
-
 class CAHGraph
 {
 public:
@@ -49,8 +44,8 @@ public:
 	//a path is a string: id_node id_label x_pos y_pos id_node id_label......
 	bool FindPath(size_t idstart,size_t idend,std::string &path);
 
-	bool GetNodeLocation(string node_label,double &x,double &y);
-	bool SetNodeLocation(string node_label,double x,double y);
+	bool GetNodeLocation(std::string node_label,double &x,double &y);
+	bool SetNodeLocation(std::string node_label,double x,double y);
 
 	// Check if node with given label already exists in topology
 	bool ExistsNodeLabel (const std::string label);
@@ -63,7 +58,7 @@ public:
 
 private:
 
-	CHierarchicalMHMap grafo;
+	mrpt::hmtslam::CHierarchicalMHMap grafo;
 
 
 };

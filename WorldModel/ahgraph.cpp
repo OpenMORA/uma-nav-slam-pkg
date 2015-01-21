@@ -32,6 +32,11 @@
 #include <mrpt/utils.h>
 #include "ahgraph.h"
 
+using namespace mrpt::utils;
+using namespace mrpt::hmtslam;
+using namespace mrpt::poses;
+using namespace std;
+
 CAHGraph::CAHGraph()
 {
 }
@@ -64,7 +69,7 @@ bool CAHGraph::AddNode(const std::string label,const std::string type,size_t &id
 
 
 	CPoint2DPtr o=CPoint2D::Create();
-	std::string s=format("[%.03f %.03f]",x,y);
+	std::string s = mrpt::format("[%.03f %.03f]",x,y);
 	o->fromString(s);
 
 	node->m_annotations.set(NODE_ANNOTATION_PLACE_POSE,o,COMMON_TOPOLOG_HYP);
@@ -148,7 +153,7 @@ void CAHGraph::GetAllNodes(std::string &list)
 		double x=0.0;
 		double y=0.0;
 		GetNodeLocation(label,x,y);
-		list.append(format("%s %f %f#",label.c_str(),x,y));
+		list.append(mrpt::format("%s %f %f#",label.c_str(),x,y));
 	}
 	//printf("All Nodes:[%s]\n",list.c_str());
 }
@@ -176,7 +181,7 @@ void CAHGraph::GetAllArcs(std::string &list)
 
 				size_t nodeid=(*itarcs)->getNodeTo();
 				std::string nodedestinationlabel=grafo.getNodeByID(nodeid)->m_label;
-				list.append(format("%s %s %s#",nodeoriginlabel.c_str(),nodedestinationlabel.c_str(),(*itarcs)->m_arcType.getType().c_str()));
+				list.append(mrpt::format("%s %s %s#",nodeoriginlabel.c_str(),nodedestinationlabel.c_str(),(*itarcs)->m_arcType.getType().c_str()));
 
 
 			}
@@ -408,7 +413,7 @@ bool CAHGraph::FindPath(size_t idstart, size_t idend, std::string &path)
 		printf("trivial path\n");
 		GetNodeLabel(idend,label);
 		GetNodeLocation(label,x,y);
-		path.append(format("%u %s %f %f ",(unsigned int)idend,label.c_str(),x,y));
+		path.append(mrpt::format("%u %s %f %f ",(unsigned int)idend,label.c_str(),x,y));
 		return true;
 	}
 
@@ -421,7 +426,7 @@ bool CAHGraph::FindPath(size_t idstart, size_t idend, std::string &path)
 	{
 		GetNodeLabel(nodes_id[i],label);
 		GetNodeLocation(label,x,y);
-		path.append(format("%u %s %f %f ",(unsigned int)nodes_id[i],label.c_str(),x,y));
+		path.append(mrpt::format("%u %s %f %f ",(unsigned int)nodes_id[i],label.c_str(),x,y));
 		//printf("[%s]\n",format("%d %s %f %f ",nodes_id[i],label.c_str(),x,y).c_str());
 	}
 	//printf("[%s]\n",path.c_str());
@@ -441,7 +446,7 @@ bool CAHGraph::SetNodeLocation(string node_label,double x,double y)
 
 			if (IS_CLASS(ann->value,CPoint2D))
 			{
-				CPoint2DPtr(ann->value)->fromString(format("[%.03f %.03f]",x,y));
+				CPoint2DPtr(ann->value)->fromString(mrpt::format("[%.03f %.03f]",x,y));
 
 				printf("Set Node Location %s to %f,%f\n",node_label.c_str(),x,y);
 			}
