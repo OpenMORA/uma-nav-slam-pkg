@@ -27,7 +27,7 @@
    +---------------------------------------------------------------------------+ */
 
 /**  @moos_module This module processes .scxml files that contain state charts. 
-  *  It will read the file given by OBJECTIVE_FILE and execute the defined state charts.
+  *  It will read the file given by the parameter OBJECTIVE_FILE and execute the defined state charts.
   *  Each state is composed by different TASKS that are executed by sending the NEW_TASK to the Agenda module.
   *  After all the task of a state are finished, the following state is processed.
   *
@@ -146,6 +146,8 @@ bool CStateChartApp::OnConnectToServer()
 
 bool CStateChartApp::DoRegistrations()
 {
+	m_Comms.Register("*", "*", 0);
+
 	//! @moos_subscribe  OBJECTIVE_FILE, PLAN_FINISHED
 	AddMOOSVariable("OBJECTIVE_FILE","OBJECTIVE_FILE","OBJECTIVE_FILE",0);
 	AddMOOSVariable("PLAN_FINISHED","PLAN_FINISHED","PLAN_FINISHED",0);
@@ -161,6 +163,7 @@ bool CStateChartApp::DoRegistrations()
 
 	//! @moos_subscribe Battery_Level, Mota_Alert, Gesture_Id, Person_Found
 	AddMOOSVariable( "Battery_Level", "Battery_Level", "Battery_Level", 0 );
+	AddMOOSVariable("BATTERY_MANAGER_V_FLOAT", "BATTERY_MANAGER_V_FLOAT", "BATTERY_MANAGER_V_FLOAT", 0);
 	AddMOOSVariable( "Mota_Alert", "Mota_Alert", "Mota_Alert", 0 );
 	AddMOOSVariable( "Gesture_Id", "Gesture_Id", "Gesture_Id", 0 );
 	AddMOOSVariable( "Person_Found", "Person_Found", "Person_Found", 0 );

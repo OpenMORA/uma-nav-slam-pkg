@@ -982,7 +982,7 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 
 			action.clear();
 			action.push_back("WAIT_TIME");
-			action.push_back("0.5");
+			action.push_back("0.033");	//min
 			plan.push_back(action);
 				
 			action.clear();

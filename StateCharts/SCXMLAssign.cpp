@@ -30,9 +30,12 @@ void agregarNodo(SCXMLDataModel *d,const char *dirbase,const SCXMLData *nodo)	{
 }
 
 void SCXMLAssign::ejecutar(SCXMLDataModel *d) const	{
-	if (contenido.esArbol) for (SCXMLData **p=contenido.datos.hijos;*p;p++) agregarNodo(d,location,*p);
-	else	{
+	if (contenido.esArbol) 
+		for (SCXMLData **p=contenido.datos.hijos;*p;p++) agregarNodo(d,location,*p);
+	else
+	{		
 		char *cadena=contenido.datos.expr->evaluarCadena(d);
+		printf("[SCXMLAssign]: %s = %s\n", location, cadena);
 		d->agregarValor(location,cadena);
 		free(cadena);
 	}
