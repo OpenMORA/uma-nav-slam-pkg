@@ -782,6 +782,15 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 				solved=true;
 		}
 
+		// PUBLISHF(Variable Params) : Publish the OpenMORA variable with the Float argument
+		else if (command == "PUBLISHF")
+		{
+			action.push_back("PUBLISHF");
+			action.push_back(task);
+			plan.push_back(action);
+			solved = true;
+		}
+
 		// SAY(phrase): Say something
 		else if (command=="SAY")
 		{
