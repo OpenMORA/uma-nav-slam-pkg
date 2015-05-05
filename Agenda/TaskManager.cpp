@@ -27,7 +27,9 @@
    +---------------------------------------------------------------------------+ */
 
 #include "TaskManager.hpp"
-#include <time.h>
+#include <ctime>
+#include <cstdio>
+#include <cstring>
 
 using namespace mrpt;
 using namespace mrpt::system;
@@ -299,9 +301,9 @@ void TaskManager::FPrintTask(tasktype task,bool added)
 	if( Save_logfile )
 	{
 		log = fopen(fileLog,"a+");
-		if (added) 
+		if (added)
 			fprintf(log,"Added a New Task:\t");
-		else 
+		else
 			fprintf(log,"Remove a Task from the Agenda:\t");
 		//fprintf(log,"[%f]\t %s\t %s\t %s\t \n",mrpt::system::timestampTotime_t(task.timestamp),     task.userid.c_str(),     task.command.c_str(),    task.task.c_str());
 		fclose(log);
