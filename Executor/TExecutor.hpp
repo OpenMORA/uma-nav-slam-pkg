@@ -83,6 +83,9 @@ public:
 
 	void EndSpeak();
 
+	void EndFaceDetection();
+	void EndFaceRecognition();
+
 	void PrintStatus();
 
 	///////Miscelaneous
@@ -101,6 +104,12 @@ public:
 	bool endnavigation;
 	bool endjoke;
 
+	bool endFaceDetection;			// Indicates the end of the face detection process (either positive or negative)
+	bool resultOKFaceDetection;		// Indicates the result of the face detection process
+
+	bool endFaceRecognition;			// Indicates the end of the face detection process (either positive or negative)
+	bool resultOKFaceRecognition;		// Indicates the result of the face detection process
+	std::string faceRecognitionLabel;
 
 	bool end_vision_camshift;
 	bool end_speak;

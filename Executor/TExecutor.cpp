@@ -261,6 +261,15 @@ TaskExecutor::TaskExecutor(COpenMORAApp::CDelayedMOOSCommClient &Comms):m_Comms(
 	errornavigation = false;
 	endnavigation = false;
 
+	// face detection
+	endFaceDetection = false;
+	resultOKFaceDetection = false;
+
+	// face recognition
+	endFaceRecognition = false;
+	resultOKFaceRecognition = false;
+	faceRecognitionLabel = "";
+
 	end_vision_camshift=false;
 	end_speak=false;
 	endjoke=false;
@@ -763,6 +772,46 @@ void TaskExecutor::ExecutePlan(PlanInfo &p)
 			}
 		}
 
+		// FACE_DETECTION
+		//---------
+		else if ( p.actions[i].name == "FACE_DETECTION" )
+		{
+			// Start detecting faces
+			m_Comms.Notify("FACE_DETECT_CMD","SET_TIMEOUT "+p.actions[i].param[1]);		// timeout to detect a face
+			m_Comms.Notify("FACE_DETECT_CMD","START");
+
+			while(!endFaceDetection){mrpt::system::sleep(100);}
+
+			m_Comms.Notify("FACE_DETECT_CMD","STOP");
+
+			if( resultOKFaceDetection )
+				m_Comms.Notify("SAY","HOLA " + p.actions[i].param[0]);					// greetings		
+			else
+				m_Comms.Notify("SAY","AQUI NO HAY NADIE");								// or nobody found
+		}
+
+		// FACE_RECOGNITION
+		//---------
+		else if ( p.actions[i].name == "FACE_RECOGNITION" )
+		{
+			// Start detecting faces
+			m_Comms.Notify("FACE_DETECT_CMD","SET_TIMEOUT "+p.actions[i].param[1]);		// timeout to detect a face
+			m_Comms.Notify("FACE_DETECT_CMD","START");
+
+			// Start recognizing
+			m_Comms.Notify("FACE_RECOGNIZE_CMD","SET_TIMEOUT "+p.actions[i].param[1]);	// timeout to recognize a face
+			m_Comms.Notify("FACE_RECOGNIZE_CMD","START");
+
+			while(!endFaceRecognition){mrpt::system::sleep(100);}
+
+			m_Comms.Notify("FACE_RECOGNIZE_CMD","STOP");
+			m_Comms.Notify("FACE_DETECT_CMD","STOP");
+			
+			if( resultOKFaceRecognition )
+				m_Comms.Notify("SAY","HOLA " + faceRecognitionLabel);					// greetings		
+			else
+				m_Comms.Notify("SAY","NO RECONOZCO A NADIE");							// or nobody found
+		}
 
 		// SWITCH_ON
 		//-----------
@@ -933,6 +982,18 @@ void TaskExecutor::EndSpeak()
 {
 	printf("Received EndSpeak Event\n");
 	end_speak=true;
+}
+
+void TaskExecutor::EndFaceRecognition()
+{
+	printf("Received endFaceRecognition Event\n");
+	endFaceRecognition=true;
+}
+
+void TaskExecutor::EndFaceDetection()
+{
+	printf("Received endFaceDetection Event\n");
+	endFaceDetection=true;
 }
 
 

@@ -158,7 +158,7 @@ bool CAgendaApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			std::string goal;
 			if( lista.size()<3 )
 			{
-				printf("[Agenda]ERROR when parsing NEW_TASK. Not all fields defined. Nothing Done.\n");
+				printf("[Agenda] ERROR when parsing NEW_TASK. Not all fields defined. Nothing Done.\n");
 				printf("[Agenda] Wrong task was: NEW_TASK %s\n",i->GetString().c_str());
 				printf("[Agenda] Correct format is: NEW_TASK UserID UserTaskID Command Parameters\n");
 			}

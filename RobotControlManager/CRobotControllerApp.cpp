@@ -493,7 +493,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 					try
 					{
 						mrpt::system::TTimeStamp ref = mrpt::system::now()/10000;	//Current time in ms
-						initial_collaborative_delay = ref - static_cast<unsigned int64_t>(atoll(list.at(1).c_str())) ;
+						initial_collaborative_delay = ref - static_cast<uint64_t>(atoll(list.at(1).c_str())) ;
 						printf("[RobotController]: Collaborative control ACTIVATED.\n");
 					}
 					catch (std::exception &e) {	return MOOSFail( (string("**COLLABORATIVE START ERROR: ") + string(e.what())).c_str() ); }
@@ -514,7 +514,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				try
 				{
 					mrpt::system::TTimeStamp ref = mrpt::system::now()/10000;	//Current time in ms
-					current_delay = ref - static_cast<unsigned int64_t>(atoll(list.at(2).c_str()));
+					current_delay = ref - static_cast<uint64_t>(atoll(list.at(2).c_str()));
 				}
 				catch (std::exception &e){ return MOOSFail( (string("**COLLABORATIVE COMMAND ERROR**") + string(e.what())).c_str() ); }
 				catch (...){ printf("UNKNOWN COLLABORATIVE COMMAND ERROR.\n"); }
