@@ -957,6 +957,145 @@ bool HPWA::SolveTask(std::string taskowner, size_t taskid, size_t localtaskid, s
 				}
 			}
 
+		//CHECK_PRESENCE(node_label)
+		else if (command=="CHECK_PRESENCE_AND_RECOGNIZE")
+			{
+				/**/ // Comment/uncomment this if you want the robot to stay/move
+				//Check if node_label is a user_label
+				std::string result;
+				GetInformation(mrpt::format ("GET_PERSON_LOCATION %s",param[0].c_str()),result);
+				
+				if (result!="NOTFOUND")
+				{  
+					//The node_label is a user, try navigating to its location
+					std::cout << "[Planner] Navigating to USER node" << std::endl;
+					solved = PathSearch((char*)result.c_str(),plan);
+
+					action.clear();
+					action.push_back("LOOK_AT");
+					action.push_back(param[0]);
+					plan.push_back(action);
+				}
+				else
+				{
+					std::cout << "[Planner] USER node not found: " << param[0] << ". Aborting..." << std::endl;
+					
+					//The node_label is not a user, try to navigate to it
+					std::cout << "[Planner] Navigating to TOPOLOGY node" << std::endl;
+					solved = PathSearch((char*)param[0].c_str(),plan);
+				}
+				/**/
+
+				// Start to record images
+				action.clear();
+				action.push_back("PUBLISH");
+				action.push_back("IMG_GRABBER_CMD START");
+				plan.push_back(action);
+
+				// Ask for some collaboration :P
+				action.clear();
+				action.push_back("SAY");
+				action.push_back("MIRAME A LA CARITA POR FAVOR");
+				plan.push_back(action);
+
+				// Start to recognize faces (it will start the face detector as well)
+				action.clear();
+				action.push_back("FACE_RECOGNITION");
+				action.push_back(param[0]);				// name to say
+				if( param.size() > 1 )
+					action.push_back(param[1]);			// timeout (not used yet)
+				else
+					action.push_back("30");				// 30 seconds timeout by default
+				plan.push_back(action);
+
+				// Stop to record images
+				action.clear();
+				action.push_back("PUBLISH");
+				action.push_back("IMG_GRABBER_CMD STOP");
+				plan.push_back(action);
+				solved = true;
+			}
+
+		//CHECK_PRESENCE(node_label)
+		else if (command=="CHECK_PRESENCE")
+			{
+				//Check if node_label is a user_label
+				std::string result;
+				GetInformation(mrpt::format ("GET_PERSON_LOCATION %s",param[0].c_str()),result);
+				
+				if (result!="NOTFOUND")
+				{  
+					//The node_label is a user, try navigating to its location
+					std::cout << "[Planner] Navigating to USER node" << std::endl;
+					solved = PathSearch((char*)result.c_str(),plan);
+
+					action.clear();
+					action.push_back("LOOK_AT");
+					action.push_back(param[0]);
+					plan.push_back(action);
+
+					// Start to record images
+					action.clear();
+					action.push_back("PUBLISH");
+					action.push_back("IMG_GRABBER_CMD START");
+					plan.push_back(action);
+
+					// Start to detect faces
+					action.clear();
+					action.push_back("FACE_DETECTION");
+					action.push_back(param[0]);				// name to say
+					if( param.size() > 1 )
+						action.push_back(param[1]);			// timeout
+					else
+						action.push_back("30");				// 30 seconds timeout by default
+					plan.push_back(action);
+
+					// Stop to record images
+					action.clear();
+					action.push_back("PUBLISH");
+					action.push_back("IMG_GRABBER_CMD STOP");
+					plan.push_back(action);
+
+					/** /
+					// Start to detect faces
+					action.clear();
+					action.push_back("SAY");
+					action.push_back("HOLA "+param[0]);
+					plan.push_back(action);
+					/**/
+				}
+				else
+				{
+					std::cout << "[Planner] USER node not found: " << param[0] << ". Aborting..." << std::endl;
+					
+					//The node_label is not a user, try to navigate to it
+					std::cout << "[Planner] Navigating to TOPOLOGY node" << std::endl;
+					solved = PathSearch((char*)param[0].c_str(),plan);
+
+					// Start to record images
+					action.clear();
+					action.push_back("PUBLISH");
+					action.push_back("IMG_GRABBER_CMD START");
+					plan.push_back(action);
+
+					// Start to detect faces
+					action.clear();
+					action.push_back("FACE_DETECTION");
+					action.push_back(param[0]);				// name to say
+					if( param.size() > 1 )
+						action.push_back(param[1]);			// timeout
+					else
+						action.push_back("30");				// 30 seconds timeout by default
+					plan.push_back(action);
+
+					// Stop to record images
+					action.clear();
+					action.push_back("PUBLISH");
+					action.push_back("IMG_GRABBER_CMD STOP");
+					plan.push_back(action);
+				}
+			}
+
 		// Command not recognized
 		else
 		{

@@ -348,7 +348,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			
 			//! @moos_var PERSON_LOCATION The result of finding a Person(node_label) in the Topological Graph
 			//! If NOT found = PERSON_LOCATION "petitionID NOTFOUND"
-			//! IF found     = PERSON_LOCATION "petitoinID location_node_label"
+			//! IF found     = PERSON_LOCATION "petitionID location_node_label"
 
 			//check that (user)node_label exists in the Topological Graph
 			if ( graph.ExistsNodeLabel(lista[1]) )
@@ -356,7 +356,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				size_t idperson = graph.GetNodeId(lista[1]);
 				printf("[WorldModel]: Searching for person %s (id: %d)\n",lista[1].c_str(),idperson);
 				std::vector<size_t> dest;
-				//Get list of neighbord nodes of tipe location
+				//Get list of neighbord nodes of type location
 				graph.GetNodeNeighbors(idperson,"Location",dest);		
 				if (dest.size()!=0)
 				{
@@ -374,7 +374,7 @@ bool CAHGraphApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			}
 			else			
 			{
-				cout << "[WorldModel]: GET_PERSON_LOCATION EROR - Node label not found." << endl;
+				cout << "[WorldModel]: GET_PERSON_LOCATION ERROR - Node label not found." << endl;
 				//! @moos_publish PERSON_LOCATION The result of finding a Person(node_label) in the Topological Graph
 				m_Comms.Notify("PERSON_LOCATION", format("%s NOTFOUND",lista[0].c_str()));
 			}

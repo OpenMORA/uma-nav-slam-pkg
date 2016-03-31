@@ -174,8 +174,26 @@ bool CExecutorApp::Iterate()
 		navigate_error->SetFresh(false);
 		te.FailedNavigation();
 	}
-
-
+#if 0
+	// Check if current FACE DETECTION has ended and its result
+	CMOOSVariable *face_detection = GetMOOSVar("FACE_DETECT_RESULT");
+	if (face_detection /*&& face_detection->IsFresh()*/)
+	{
+		face_detection->SetFresh(false);
+		std::string response = face_detection->GetAsString();
+		std::cout << "Received " << response << std::endl;
+		if( MOOSStrCmp(response.c_str(),"OK") )
+		{
+			te.EndFaceDetection();
+			te.resultOKFaceDetection = true;
+		}
+		if( MOOSStrCmp(response.c_str(),"TIMEOUT") )
+		{
+			te.EndFaceDetection();
+			te.resultOKFaceDetection = false;
+		} // end-if
+	} // end-if
+#endif
 	// Check if Voice action has finished.
 	// Only one "talk" action can be carried out simultaniously
 	CMOOSVariable *speak_end = GetMOOSVar("VOICE_EVENT_DONE");
@@ -238,6 +256,20 @@ bool CExecutorApp::Iterate()
 				m_Comms.Notify( lista[0], format("%lu %s",te.pet_map.begin()->first,lista[1].c_str()) );
 				te.asked_petitions.erase(te.pet_map.begin()->first);
 			}
+#if 0
+			else if( lista[0]=="FACE_DETECT_FACES" )
+			{
+				CMOOSVariable * pVar = GetMOOSVar( lista[0] );
+				if( pVar && pVar->IsFresh() )
+				{
+					std::cout << "And it is fresh" << std::endl;
+					pVar->SetFresh(false);
+					// answer_map(petitionID, response)
+					te.answer_map.insert( pet_pair(te.pet_map.begin()->first, pVar->GetStringVal()) );
+					te.asked_petitions.erase(te.pet_map.begin()->first);
+				}
+			}
+#endif
 		te.pet_sem.leave();
 	}
 
@@ -308,6 +340,12 @@ bool CExecutorApp::DoRegistrations()
 	//! @moos_subscribe GRAPH
 	AddMOOSVariable( "GRAPH", "GRAPH", "GRAPH", 0 );
 
+	//! @moos_subscribe FACE_DETECT_RESULT
+	AddMOOSVariable( "FACE_DETECT_RESULT", "FACE_DETECT_RESULT", "FACE_DETECT_RESULT", 0 );
+
+	//! @moos_subscribe FACE_RECOGNIZE_RESULT
+	AddMOOSVariable( "FACE_RECOGNIZE_RESULT", "FACE_RECOGNIZE_RESULT", "FACE_RECOGNIZE_RESULT", 0 );
+
 	//! @moos_subscribe SHUTDOWN
 	AddMOOSVariable( "SHUTDOWN", "SHUTDOWN", "SHUTDOWN", 0 );
 
@@ -339,8 +377,40 @@ bool CExecutorApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			MOOSTrace("Closing Module \n");
 			this->RequestQuit();
 		}
-	}
 
+		// Check if current FACE DETECTION has ended and its result
+		if( i->GetName()=="FACE_DETECT_RESULT" )
+		{
+			std::string response = i->GetAsString();
+			if( MOOSStrCmp(response.c_str(),"OK") )
+			{
+				te.EndFaceDetection();
+				te.resultOKFaceDetection = true;
+			}
+			if( MOOSStrCmp(response.c_str(),"TIMEOUT") )
+			{
+				te.EndFaceDetection();
+				te.resultOKFaceDetection = false;
+			} // end-if
+		}
+
+		// Check if current FACE RECOGNITION has ended and its result
+		if( i->GetName()=="FACE_RECOGNIZE_RESULT" )
+		{
+			std::string response = i->GetAsString();
+			if( !MOOSStrCmp(response.c_str(),"NONE") )
+			{
+				te.EndFaceRecognition();
+				te.resultOKFaceRecognition = true;
+				te.faceRecognitionLabel = response;
+			}
+			else
+			{
+				te.EndFaceRecognition();
+				te.resultOKFaceRecognition = false;
+			}
+		} // end-if
+	} // end-for
 
 	UpdateMOOSVariables(NewMail);
 	return true;

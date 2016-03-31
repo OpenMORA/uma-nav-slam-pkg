@@ -51,19 +51,19 @@ protected:
 	bool OnCommandMsg( CMOOSMsg Msg );
 
     /** performs the registration for mail */
-    bool DoRegistrations();	
+    bool DoRegistrations();
 
-	void CRobotControllerApp::SetManualMode();
-	void CRobotControllerApp::SetAutonomousMode();
-	void CRobotControllerApp::GoToRecharge();
-	void CRobotControllerApp::CheckBattery(double battery_v);
+	void SetManualMode();
+	void SetAutonomousMode();
+	void GoToRecharge();
+	void CheckBattery(double battery_v);
 
 
 	//Data
 	size_t Robot_control_mode;							// The Opreation mode of the robot. 0=Manual, 2=Autonomous=(OpenMORA)
-	mrpt::system::TTimeStamp last_mqtt_ack_time;		// Stores the time of the last ACK from the Pilot-MQTT client 
+	mrpt::system::TTimeStamp last_mqtt_ack_time;		// Stores the time of the last ACK from the Pilot-MQTT client
 	mrpt::system::TTimeStamp last_bettery_display_time; // Stores the time of the last battery display
-	mrpt::system::TTimeStamp last_bettery_warning_time; // Stores the time of the last battery warning	
+	mrpt::system::TTimeStamp last_bettery_warning_time; // Stores the time of the last battery warning
 	bool use_client_alive_ack;							// Indicates wheter this module should check the status of the ACK from Client (Ture/false)
 	bool check_mqtt_alive;								// Indicates wheter this module should check the status of MQTT (Ture/false)
 	bool check_battery_status;							// Indicates wheter this module should check the status of Battery (Ture/false)
