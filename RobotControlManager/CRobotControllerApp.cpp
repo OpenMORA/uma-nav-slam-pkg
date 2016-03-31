@@ -38,17 +38,30 @@
 
 #include "CRobotControllerApp.h"
 
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/obs/CObservationBatteryState.h>
+#else
+#	include <mrpt/slam/CObservationBatteryState.h>
+#endif
 #include <sstream>
 #include <iomanip>
 #include <iostream>
-#include <mrpt/slam/CObservationBatteryState.h>
+#include <stdlib.h>	    /* abs */
 #include <mrpt/system.h>
-#include <stdlib.h>     /* abs */
+
+#ifdef _WIN32
+	#define atoll(S) _atoi64(S)
+#endif
 
 
 using namespace std;
 using namespace mrpt;
-using namespace mrpt::slam;
+#if MRPT_VERSION>=0x130
+	using namespace mrpt::obs;
+#else
+	using namespace mrpt::slam;
+#endif
 using namespace mrpt::utils;
 using namespace mrpt::poses;
 
@@ -122,6 +135,13 @@ bool CRobotControllerApp::OnStartUp()
 		//! @moos_param battery_threshold_charged Battery level corresponding to a complete charge
 		battery_threshold_charged = m_ini.read_float(section,"battery_threshold_charged",29.0,false);
 
+		//! @moos_param collaborative_pure_angle_th
+		collaborative_pure_angle_th = m_ini.read_float(section, "collaborative_pure_angle_th", 45.0, false);
+		//! @moos_param collaborative_max_target_distance
+		collaborative_max_target_distance = m_ini.read_float(section, "collaborative_max_target_distance", 3.0, false);
+		//! @moos_param collaborative_max_angular_speed
+		collaborative_max_angular_speed = m_ini.read_float(section, "collaborative_max_angular_speed", 2.0, false);
+
 		mqtt_status = "OFFLINE";
 		client_connected = "NONE";
 		Is_Charging = 1.0;		//Start as charging (default behaviour)
@@ -173,7 +193,7 @@ bool CRobotControllerApp::Iterate()
 				
 					if( IS_CLASS(obj, CObservationBatteryState) )
 					{
-						mrpt::slam::CObservationBatteryStatePtr battery_obs = mrpt::slam::CObservationBatteryStatePtr(obj);
+						CObservationBatteryStatePtr battery_obs = CObservationBatteryStatePtr(obj);
 						CheckBattery(battery_obs->voltageMainRobotBattery);
 					}
 				}
@@ -189,7 +209,7 @@ bool CRobotControllerApp::Iterate()
 				
 					if( IS_CLASS(obj, CObservationBatteryState) )
 					{
-						mrpt::slam::CObservationBatteryStatePtr battery_obs = mrpt::slam::CObservationBatteryStatePtr(obj);
+						CObservationBatteryStatePtr battery_obs = CObservationBatteryStatePtr(obj);
 						CheckBattery(battery_obs->voltageMainRobotBattery);
 					}
 				}				
@@ -444,6 +464,9 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 		//MOTION_REQUEST v w
 		if( MOOSStrCmp(m.GetKey(),"MOTION_REQUEST") )
 		{
+			//! @moos_publish PNAVIGATORREACTIVEPTG3D_CMD Request the reactive3D to stop current navigation
+			m_Comms.Notify("PNAVIGATORREACTIVEPTG3D_CMD", "PAUSE");
+
 			std::deque<std::string> list;
 			mrpt::system::tokenize(m.GetString()," ",list);
 			if( list.size() ==2 )
@@ -516,9 +539,9 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 					double commandModuleNormalized = atof(list.at(0).c_str());
 					double commandAngle = atof(list.at(1).c_str());
 
-					double maxDistanceForCollaborativeTarget = 3.0;					//Máxima distancia del target en el caso de recibir un módulo máximo
-					double maxAngularSpeed = 2.0;									 //Definimos aquí el valor máximo de la velocidad angular 
-					double thresholdAngletoCommandPureRotationMovement = 45.0; 
+					//double collaborative_max_target_distance = 3.0;					//Máxima distancia del target en el caso de recibir un módulo máximo
+					//double collaborative_max_angular_speed = 2.0;									 //Definimos aquí el valor máximo de la velocidad angular 
+					//double thresholdAngletoCommandPureRotationMovement = 45.0; 
 
 					SetAutonomousMode();
 
@@ -540,19 +563,19 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 					else
 						printf("[MQTTMosquitto:Collaborative]: Error, Localization not available. Collaborative command discarded.\n");
 
-
-					if(commandAngle < -thresholdAngletoCommandPureRotationMovement)
+					
+					if (commandAngle < -collaborative_pure_angle_th)
 					{
 						printf("[MQTTMosquitto:Collaborative]:Turning Right..\n");
 
 						if (last_working_zone == "target")
 						{
-							targetX = locX;
-							targetY = locY;
-							const string target = format("[%.03f %.03f]", targetX,targetY);
-							//! @moos_publish NAVIGATE_TARGET Set destination ([x y]) for robot to go autonomously
-							printf("[MQTTMosquitto:Collaborative]: Selected target is: %s\n",target.c_str());
-							m_Comms.Notify("NAVIGATE_TARGET",target);
+							//targetX = locX;
+							//targetY = locY;
+							//const string target = format("[%.03f %.03f]", targetX,targetY);
+							////! @moos_publish NAVIGATE_TARGET Set destination ([x y]) for robot to go autonomously
+							//printf("[MQTTMosquitto:Collaborative]: Selected target is: %s\n",target.c_str());
+							//m_Comms.Notify("NAVIGATE_TARGET",target);
 
 							//! @moos_publish CANCEL_NAVIGATION
 							m_Comms.Notify("CANCEL_NAVIGATION", "RobotController-Collaborative");
@@ -561,20 +584,20 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 						//! @moos_publish MOTION_CMD_V Set robot linear speed
 						m_Comms.Notify("MOTION_CMD_V",0.0);
 						//! @moos_publish MOTION_CMD_W Set robot angular speed
-						m_Comms.Notify("MOTION_CMD_W",-commandModuleNormalized*maxAngularSpeed);
+						m_Comms.Notify("MOTION_CMD_W",-commandModuleNormalized*collaborative_max_angular_speed);
 						last_working_zone = "turn";
 					}
-					else if( commandAngle > thresholdAngletoCommandPureRotationMovement)
+					else if (commandAngle > collaborative_pure_angle_th)
 					{
 						printf("[MQTTMosquitto:Collaborative]:Turning Left..\n");
 						if (last_working_zone == "target")
 						{							
-							targetX = locX;
-							targetY = locY;
-							const string target = format("[%.03f %.03f]", targetX,targetY);
-							//! @moos_publish NAVIGATE_TARGET Set destination ([x y]) for robot to go autonomously
-							printf("[MQTTMosquitto:Collaborative]: Selected target is: %s\n",target.c_str());
-							m_Comms.Notify("NAVIGATE_TARGET",target);
+							//targetX = locX;
+							//targetY = locY;
+							//const string target = format("[%.03f %.03f]", targetX,targetY);
+							////! @moos_publish NAVIGATE_TARGET Set destination ([x y]) for robot to go autonomously
+							//printf("[MQTTMosquitto:Collaborative]: Selected target is: %s\n",target.c_str());
+							//m_Comms.Notify("NAVIGATE_TARGET",target);
 
 							//! @moos_publish CANCEL_NAVIGATION
 							m_Comms.Notify("CANCEL_NAVIGATION", "RobotController-Collaborative");
@@ -583,7 +606,7 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 						//! @moos_publish MOTION_CMD_V Set robot linear speed
 						m_Comms.Notify("MOTION_CMD_V",0.0);
 						//! @moos_publish MOTION_CMD_W Set robot angular speed
-						m_Comms.Notify("MOTION_CMD_W",commandModuleNormalized*maxAngularSpeed);
+						m_Comms.Notify("MOTION_CMD_W",commandModuleNormalized*collaborative_max_angular_speed);
 						last_working_zone = "turn";
 					}
 					else
@@ -591,8 +614,8 @@ bool CRobotControllerApp::OnNewMail(MOOSMSG_LIST &NewMail)
 						printf("[MQTTMosquitto:Collaborative]:Going to target..\n");
 						try
 						{
-							targetX = locX + maxDistanceForCollaborativeTarget*commandModuleNormalized*cos( (angle+commandAngle) * PI / 180.0 );
-							targetY = locY + maxDistanceForCollaborativeTarget*commandModuleNormalized*sin( (angle+commandAngle) * PI / 180.0 );
+							targetX = locX + collaborative_max_target_distance*commandModuleNormalized*cos( (angle+commandAngle) * PI / 180.0 );
+							targetY = locY + collaborative_max_target_distance*commandModuleNormalized*sin( (angle+commandAngle) * PI / 180.0 );
 							printf("Targets are: %.03f %.03f\n",targetX, targetY);
 
 							const string target = format("[%.03f %.03f]", targetX,targetY);

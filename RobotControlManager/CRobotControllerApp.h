@@ -76,6 +76,9 @@ protected:
 	bool going_to_docking;
 	uint64_t initial_collaborative_delay;
 	std::string last_working_zone;
+	float collaborative_pure_angle_th;
+	float collaborative_max_target_distance;
+	float collaborative_max_angular_speed;
 };
 
 #endif
