@@ -63,7 +63,6 @@ using namespace mrpt;
 #else
 	using namespace mrpt::slam;
 #endif
-#endif
 using namespace mrpt::utils;
 using namespace mrpt::poses;
 
