@@ -29,12 +29,13 @@
 #ifndef CStateChartApp_H
 #define CStateChartApp_H
 
-#include <MOOS/libMOOS/App/MOOSApp.h>
+//#include <MOOS/libMOOS/App/MOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include "ManejadorSCXML.h"
 
 
 
-class CStateChartApp : public CMOOSApp
+class CStateChartApp : public COpenMORAApp
 {
 public:
     CStateChartApp();

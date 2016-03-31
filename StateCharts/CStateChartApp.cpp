@@ -146,7 +146,8 @@ bool CStateChartApp::OnConnectToServer()
 
 bool CStateChartApp::DoRegistrations()
 {
-	m_Comms.Register("*", "*", 0);
+	//! @moos_subscribe  *
+	m_Comms.Register("*","*",0.0);
 
 	//! @moos_subscribe  OBJECTIVE_FILE, PLAN_FINISHED
 	AddMOOSVariable("OBJECTIVE_FILE","OBJECTIVE_FILE","OBJECTIVE_FILE",0);
@@ -162,7 +163,7 @@ bool CStateChartApp::DoRegistrations()
 	AddMOOSVariable( "RESUME_STATECHART", "RESUME_STATECHART", "RESUME_STATECHART", 0 );
 
 	//! @moos_subscribe Battery_Level, Mota_Alert, Gesture_Id, Person_Found
-	AddMOOSVariable( "Battery_Level", "Battery_Level", "Battery_Level", 0 );
+	AddMOOSVariable( "BATTERY_V_FLOAT", "BATTERY_V_FLOAT", "BATTERY_V_FLOAT", 0 );
 	AddMOOSVariable("BATTERY_MANAGER_V_FLOAT", "BATTERY_MANAGER_V_FLOAT", "BATTERY_MANAGER_V_FLOAT", 0);
 	AddMOOSVariable( "Mota_Alert", "Mota_Alert", "Mota_Alert", 0 );
 	AddMOOSVariable( "Gesture_Id", "Gesture_Id", "Gesture_Id", 0 );
